@@ -47,7 +47,7 @@ git clone https://github.com/uday-a/sveltekit-boilerplate my-app
 cd my-app
 npm install
 cp .env.example .env
-# SESSION_PASSWORD is the only required var (32+ chars) — paste the output of:
+# Optional: SESSION_PASSWORD (32+ chars) keeps sessions across restarts — paste the output of:
 openssl rand -base64 32
 npm run dev
 # → http://localhost:5173
@@ -282,7 +282,7 @@ cp .env.example .env
 openssl rand -base64 32
 ```
 
-Only `SESSION_PASSWORD` is required (32+ chars). Everything else is optional — see the matrix below. Empty values (`FOO=`) are treated as unset.
+No variable is required — it boots zero-config. Set `SESSION_PASSWORD` (32+ chars) for any real deployment; without it a random per-instance secret is used and sessions reset on every restart/new instance. Everything else is optional — see the matrix below. Empty values (`FOO=`) are treated as unset.
 
 ### 3. Database (optional)
 
@@ -337,7 +337,7 @@ Open **[http://localhost:5173/login](http://localhost:5173/login)** → **Contin
 
 | Env var(s) | Unset | Set |
 |---|---|---|
-| `SESSION_PASSWORD` | **Boot fails** — required (32+ chars) | Sessions sealed |
+| `SESSION_PASSWORD` | Random per-instance secret (warning logged); sessions reset on restart | Stable sessions (32+ chars) |
 | `DEMO_MODE` | Auto: on only when `NODE_ENV=development` | `true` forces demo sign-in on, `false` forces it off |
 | `GITHUB_CLIENT_ID` + `GITHUB_CLIENT_SECRET` | GitHub sign-in unavailable | GitHub OAuth |
 | `INITIAL_ADMIN_LOGINS` | Nobody auto-promoted | Listed GitHub logins created as admins on first sign-in |
@@ -402,14 +402,14 @@ Playwright needs a browser once: `npx playwright install --with-deps chromium`.
 
 ### Deploy to Vercel
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/uday-a/sveltekit-boilerplate&env=SESSION_PASSWORD,PUBLIC_SITE_URL,DEMO_MODE&envDescription=SESSION_PASSWORD%3A%20openssl%20rand%20-base64%2032.%20PUBLIC_SITE_URL%3A%20your%20deployment%20URL.%20DEMO_MODE%3A%20true%20only%20for%20a%20public%20demo%20(demo%20sessions%20are%20admin)%2C%20otherwise%20false.&project-name=sveltekit-boilerplate&repository-name=sveltekit-boilerplate)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/uday-a/sveltekit-boilerplate&project-name=sveltekit-boilerplate&repository-name=sveltekit-boilerplate)
 
 1. **Add New → Project** in the Vercel dashboard and import the repo. The SvelteKit framework preset is auto-detected; keep the default build command and output.
 2. Set environment variables (Project → Settings → Environment Variables):
 
    | Variable | Required | Value |
    | --- | --- | --- |
-   | `SESSION_PASSWORD` | yes | 32+ random chars — `openssl rand -base64 32` |
+   | `SESSION_PASSWORD` | recommended | 32+ random chars — `openssl rand -base64 32`. Without it sessions reset on every cold start |
    | `PUBLIC_SITE_URL` | yes | your deployment URL, e.g. `https://your-app.vercel.app` (used by OAuth redirects and emails; defaults to localhost) |
    | `DEMO_MODE` | for a public demo | `true` to enable demo sign-in (see the warning below); leave unset or `false` otherwise |
    | `DATABASE_URL`, `GITHUB_CLIENT_ID`/`GITHUB_CLIENT_SECRET`, `RESEND_API_KEY`, `POLAR_*`, `AXIOM_*`, `PUBLIC_SENTRY_DSN`, `PUBLIC_POSTHOG_*` | optional | see `.env.example` — each integration stays off until its vars are set |

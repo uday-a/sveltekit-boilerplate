@@ -1,3 +1,4 @@
+import { randomBytes } from 'node:crypto'
 import { building } from '$app/environment'
 import { config as loadDotenv } from 'dotenv'
 import { z } from 'zod'
@@ -122,15 +123,22 @@ function cleanEnv(input: NodeJS.ProcessEnv): Record<string, string> {
   return out
 }
 
-// Like Nuxt, nothing is needed at build time: SvelteKit's post-build analyse
-// step imports server modules, so a missing SESSION_PASSWORD on a CI/Vercel
-// build would otherwise fail the build. The placeholder only exists while
-// building (no requests are served then); the running server still
-// fail-fasts below when the real secret is missing.
-const BUILD_PLACEHOLDER = { SESSION_PASSWORD: 'build-time-placeholder-never-used-to-seal-cookies' }
-const parsed = Env.safeParse(
-  building ? { ...BUILD_PLACEHOLDER, ...cleanEnv(process.env) } : cleanEnv(process.env),
-)
+// Zero-config: no env var is required, at build or at runtime. When
+// SESSION_PASSWORD is unset we seal cookies with a random per-instance secret
+// (logged as a warning), so a fresh clone or a Vercel import boots as-is.
+// Trade-off: sessions are invalidated whenever the process restarts or a new
+// serverless instance starts. Set SESSION_PASSWORD for any real deployment.
+const rawEnv = cleanEnv(process.env)
+if (!rawEnv.SESSION_PASSWORD) {
+  rawEnv.SESSION_PASSWORD = randomBytes(32).toString('base64')
+  if (!building) {
+    console.warn(
+      '⚠️  SESSION_PASSWORD is not set — using a random per-instance secret. Sessions reset on every '
+      + 'restart / new instance. Set SESSION_PASSWORD (openssl rand -base64 32) for real deployments.',
+    )
+  }
+}
+const parsed = Env.safeParse(rawEnv)
 if (!parsed.success) {
   // Stderr + throw — SvelteKit logs the throw on startup and exits.
   console.error('\n❌ Invalid environment variables:\n')
