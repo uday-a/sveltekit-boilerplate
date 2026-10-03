@@ -346,7 +346,7 @@ Open **[http://localhost:5173/login](http://localhost:5173/login)** → **Contin
 | `POLAR_ACCESS_TOKEN` + `POLAR_WEBHOOK_SECRET` (+ `POLAR_*_PRODUCT_ID`, `POLAR_SERVER`) | Billing routes return an instructive error | Checkout, portal, webhooks |
 | `AXIOM_TOKEN` + `AXIOM_DATASET` (+ `AXIOM_ORG_ID`) | Logs to stdout only | Logs shipped to Axiom |
 | `PUBLIC_POSTHOG_KEY` (+ `PUBLIC_POSTHOG_HOST`) | No analytics; `posthog-js` never loaded | PostHog page views + autocapture |
-| `PUBLIC_SENTRY_DSN` | Errors go to `console.error` | Sentry errors, traces, replay (inlined at build time — needs a rebuild) |
+| `PUBLIC_SENTRY_DSN` | Errors go to `console.error` | Sentry errors, traces, replay (read at runtime) |
 | `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, `SENTRY_PROJECT` | — | Validated only; sourcemap upload not wired |
 | `PUBLIC_SITE_URL` | `http://localhost:5173` | OAuth callback + email links |
 
@@ -414,7 +414,7 @@ Playwright needs a browser once: `npx playwright install --with-deps chromium`.
    | `DEMO_MODE` | for a public demo | `true` to enable demo sign-in (see the warning below); leave unset or `false` otherwise |
    | `DATABASE_URL`, `GITHUB_CLIENT_ID`/`GITHUB_CLIENT_SECRET`, `RESEND_API_KEY`, `POLAR_*`, `AXIOM_*`, `PUBLIC_SENTRY_DSN`, `PUBLIC_POSTHOG_*` | optional | see `.env.example` — each integration stays off until its vars are set |
 
-   `PUBLIC_SENTRY_DSN` and `PUBLIC_POSTHOG_*` are inlined at build time, so redeploy after changing them.
+   `PUBLIC_SENTRY_DSN` and `PUBLIC_POSTHOG_*` are read at runtime (`$env/dynamic/public`), so changing them takes effect on the next request; leaving them unset is fine.
 3. Deploy. Vercel sets `NODE_ENV=production`, so session cookies are `secure` and demo mode is off unless `DEMO_MODE=true`.
 
 Serverless caveats:
@@ -434,7 +434,7 @@ npm run build
 NODE_ENV=production PORT=3000 ORIGIN=https://your-domain.com node build
 ```
 
-`PUBLIC_*` variables are read through `$env/static/public`, so they are **inlined at build time** — set them before `npm run build`. Server-only variables are read from `process.env` at runtime. `ORIGIN` (or `PROTOCOL_HEADER` / `HOST_HEADER` behind a proxy) lets SvelteKit's CSRF check accept same-origin form posts; see the [adapter-node docs](https://svelte.dev/docs/kit/adapter-node).
+`PUBLIC_*` variables are read at runtime through `$env/dynamic/public`, so they don't need to exist at build time. Server-only variables are read from `process.env` at runtime. `ORIGIN` (or `PROTOCOL_HEADER` / `HOST_HEADER` behind a proxy) lets SvelteKit's CSRF check accept same-origin form posts; see the [adapter-node docs](https://svelte.dev/docs/kit/adapter-node).
 
 For Netlify or Cloudflare, swap the adapter in `svelte.config.js` for the matching one.
 

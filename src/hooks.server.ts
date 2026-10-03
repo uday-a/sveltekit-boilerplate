@@ -1,14 +1,15 @@
 import { redirect, type Handle, type HandleServerError } from '@sveltejs/kit'
 import { sequence } from '@sveltejs/kit/hooks'
 import * as Sentry from '@sentry/sveltekit'
-import { PUBLIC_SENTRY_DSN } from '$env/static/public'
+import { env as publicEnv } from '$env/dynamic/public'
 import { LOCALE_COOKIE_NAME, normalizeLocale } from '$lib/i18n'
 import { getSession } from '$lib/server/session'
 
 // Sentry server init — port of nuxt-boilerplate sentry.server.config.ts.
 // Gated on PUBLIC_SENTRY_DSN: unset → never initialized, handleError
 // degrades to console.error and `handle` skips the sentry wrapper below.
-// DSN changes need a rebuild ($env/static is inlined at build time).
+// Read at runtime ($env/dynamic) so an unset DSN never fails the build.
+const PUBLIC_SENTRY_DSN = publicEnv.PUBLIC_SENTRY_DSN
 if (PUBLIC_SENTRY_DSN) {
   Sentry.init({
     dsn: PUBLIC_SENTRY_DSN,

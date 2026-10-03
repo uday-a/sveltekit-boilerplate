@@ -4,12 +4,16 @@
 // leave the browser, and handleError degrades to console.error. (The
 // @sentry/sveltekit import is static, so the SDK still ships in the client
 // bundle when unconfigured — same tradeoff as nuxt's conditional module
-// minus the build-time module exclusion. DSN changes need a rebuild:
-// $env/static is inlined at build time.)
+// minus the build-time module exclusion. The DSN is read at runtime via
+// $env/dynamic/public.)
 
 import * as Sentry from '@sentry/sveltekit'
 import type { HandleClientError } from '@sveltejs/kit'
-import { PUBLIC_SENTRY_DSN } from '$env/static/public'
+import { env as publicEnv } from '$env/dynamic/public'
+
+// Dynamic (runtime) env: an unset var must not fail the build (static
+// imports require every PUBLIC_* var to exist at build time, e.g. on Vercel).
+const PUBLIC_SENTRY_DSN = publicEnv.PUBLIC_SENTRY_DSN
 
 if (PUBLIC_SENTRY_DSN) {
   Sentry.init({

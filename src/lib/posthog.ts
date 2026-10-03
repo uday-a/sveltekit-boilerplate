@@ -18,7 +18,7 @@
 // with zero env checks.
 //
 // NOTE: no `$env/*` imports here on purpose — the key/host are passed in by
-// +layout.svelte (which reads $env/static/public), keeping this module
+// +layout.svelte (which reads $env/dynamic/public), keeping this module
 // unit-testable under vitest (same reason $lib/server/env.ts avoids $env).
 
 import type { PostHog } from 'posthog-js'

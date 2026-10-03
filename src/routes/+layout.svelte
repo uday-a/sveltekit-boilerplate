@@ -3,7 +3,9 @@
   import { onMount } from 'svelte'
   import { get } from 'svelte/store'
   import { afterNavigate } from '$app/navigation'
-  import { PUBLIC_POSTHOG_HOST, PUBLIC_POSTHOG_KEY } from '$env/static/public'
+  import { env as publicEnv } from '$env/dynamic/public'
+  // Runtime env so unset PostHog vars don't fail the build.
+  const { PUBLIC_POSTHOG_HOST, PUBLIC_POSTHOG_KEY } = publicEnv
   import { initI18n } from '$lib/i18n'
   import { capturePageview, initPostHog, posthog } from '$lib/posthog'
   import { Toaster } from '$lib/components/ui/sonner'

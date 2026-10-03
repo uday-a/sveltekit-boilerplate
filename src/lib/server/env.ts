@@ -1,3 +1,4 @@
+import { building } from '$app/environment'
 import { config as loadDotenv } from 'dotenv'
 import { z } from 'zod'
 
@@ -121,7 +122,15 @@ function cleanEnv(input: NodeJS.ProcessEnv): Record<string, string> {
   return out
 }
 
-const parsed = Env.safeParse(cleanEnv(process.env))
+// Like Nuxt, nothing is needed at build time: SvelteKit's post-build analyse
+// step imports server modules, so a missing SESSION_PASSWORD on a CI/Vercel
+// build would otherwise fail the build. The placeholder only exists while
+// building (no requests are served then); the running server still
+// fail-fasts below when the real secret is missing.
+const BUILD_PLACEHOLDER = { SESSION_PASSWORD: 'build-time-placeholder-never-used-to-seal-cookies' }
+const parsed = Env.safeParse(
+  building ? { ...BUILD_PLACEHOLDER, ...cleanEnv(process.env) } : cleanEnv(process.env),
+)
 if (!parsed.success) {
   // Stderr + throw — SvelteKit logs the throw on startup and exits.
   console.error('\n❌ Invalid environment variables:\n')
