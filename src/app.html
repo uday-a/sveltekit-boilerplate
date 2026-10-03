@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" type="image/svg+xml" href="%sveltekit.assets%/favicon.svg" />
+    <script>
+      // Theme anti-FOUC — same logic as nuxt-boilerplate server/plugins/theme.ts.
+      // Reads the `uipkge-theme` cookie (NOT localStorage) so SSR and the client
+      // agree on the initial value and avoid a hydration mismatch. Runs
+      // synchronously so `dark` lands on <html> before first paint.
+      // Also applies the brand colour (`uipkge-color-theme` →
+      // data-color-theme) and corner radius (`uipkge-radius` → --radius)
+      // owned by $lib/color-theme.svelte.ts, so the first paint is already
+      // themed with no flash.
+      // If you rename a cookie key, change it here AND in the theme helper
+      // (feature workers: port of nuxt `app/composables/useTheme.ts`).
+      try {
+        var m = document.cookie.match(/(?:^|; )uipkge-theme=([^;]+)/)
+        var t = m ? decodeURIComponent(m[1]) : 'system'
+        var d = t === 'dark' || (t === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)
+        if (d) document.documentElement.classList.add('dark')
+        var cm = document.cookie.match(/(?:^|; )uipkge-color-theme=([^;]+)/)
+        var ct = cm ? decodeURIComponent(cm[1]) : 'default'
+        if (ct && ct !== 'default') document.documentElement.setAttribute('data-color-theme', ct)
+        var rm = document.cookie.match(/(?:^|; )uipkge-radius=([^;]+)/)
+        var r = rm ? decodeURIComponent(rm[1]) : '0.3'
+        if (['0', '0.25', '0.3', '0.5', '0.75'].indexOf(r) !== -1) {
+          document.documentElement.style.setProperty('--radius', r + 'rem')
+        }
+      } catch (e) {}
+    </script>
+    %sveltekit.head%
+  </head>
+  <body data-sveltekit-preload-data="hover">
+    <div style="display: contents">%sveltekit.body%</div>
+  </body>
+</html>

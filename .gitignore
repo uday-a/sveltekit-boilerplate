@@ -1,0 +1,28 @@
+# SvelteKit dev/build outputs
+.svelte-kit/
+build/
+dist/
+
+# Node dependencies
+node_modules/
+
+# Test output artifacts
+/test-results/
+/playwright-report/
+/blob-report/
+/coverage/
+
+# Logs
+logs/
+*.log
+
+# Misc
+.DS_Store
+
+# Local env files
+.env
+.env.*
+!.env.example
+
+# Playwright MCP screenshots (local debug artifacts)
+.playwright-mcp/

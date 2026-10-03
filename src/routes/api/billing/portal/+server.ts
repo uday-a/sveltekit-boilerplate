@@ -1,0 +1,51 @@
+import type { RequestHandler } from './$types'
+import { requireAuth } from '$lib/server/guards'
+import { logger } from '$lib/server/logger'
+import { getPolar } from '$lib/server/polar'
+import { apiError, jsonError, jsonOk } from '$lib/server/response'
+
+// Create a Polar customer-portal session for the signed-in user.
+// Returns the portal URL — the client should redirect to it.
+//
+// The portal lets the customer change/cancel their plan and manage
+// payment methods. Polar identifies the customer by our user.id via
+// `external_customer_id` (set at checkout time).
+export const POST: RequestHandler = async (event) => {
+  try {
+    const session = await requireAuth(event)
+
+    if (session.demo === true) {
+      throw apiError('FORBIDDEN', 'Demo sessions don\'t have a billing portal.')
+    }
+
+    const polar = await getPolar()
+    if (!polar) {
+      throw apiError('INTERNAL', 'Billing is not configured. Set POLAR_ACCESS_TOKEN + POLAR_WEBHOOK_SECRET.')
+    }
+
+    try {
+      const portal = await polar.customerSessions.create({
+        external_customer_id: String(session.user.id),
+      })
+      logger.info('billing.portal.created', { userId: session.user.id })
+      return jsonOk({ url: portal.customer_portal_url })
+    }
+    catch (e) {
+      // 404 from Polar means the user has never checked out — no
+      // customer record exists. Surface that as a 404 in our envelope
+      // so the client can offer a checkout CTA instead.
+      const message = (e as { message?: string }).message ?? ''
+      if (message.toLowerCase().includes('not found') || message.includes('404')) {
+        throw apiError('NOT_FOUND', 'No active subscription. Start one from the pricing page first.')
+      }
+      logger.error('billing.portal.failed', {
+        userId: session.user.id,
+        error: (e as Error).message,
+      })
+      throw apiError('INTERNAL', 'Could not open the billing portal. Try again later.')
+    }
+  }
+  catch (err) {
+    return jsonError(err)
+  }
+}
