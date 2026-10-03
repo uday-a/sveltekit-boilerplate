@@ -337,7 +337,7 @@ Open **[http://localhost:5173/login](http://localhost:5173/login)** → **Contin
 
 | Env var(s) | Unset | Set |
 |---|---|---|
-| `SESSION_PASSWORD` | Random per-instance secret (warning logged); sessions reset on restart | Stable sessions (32+ chars) |
+| `SESSION_PASSWORD` | Pure demo (`DEMO_MODE=true`, no DB/OAuth/Resend/Polar): stable derived secret, works on serverless. Otherwise a random per-instance secret (warning logged); sessions reset on restart | Stable sessions (32+ chars) |
 | `DEMO_MODE` | Auto: on only when `NODE_ENV=development` | `true` forces demo sign-in on, `false` forces it off |
 | `GITHUB_CLIENT_ID` + `GITHUB_CLIENT_SECRET` | GitHub sign-in unavailable | GitHub OAuth |
 | `INITIAL_ADMIN_LOGINS` | Nobody auto-promoted | Listed GitHub logins created as admins on first sign-in |

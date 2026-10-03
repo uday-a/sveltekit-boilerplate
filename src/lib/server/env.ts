@@ -1,4 +1,4 @@
-import { randomBytes } from 'node:crypto'
+import { createHash, randomBytes } from 'node:crypto'
 import { building } from '$app/environment'
 import { config as loadDotenv } from 'dotenv'
 import { z } from 'zod'
@@ -123,15 +123,29 @@ function cleanEnv(input: NodeJS.ProcessEnv): Record<string, string> {
   return out
 }
 
-// Zero-config: no env var is required, at build or at runtime. When
-// SESSION_PASSWORD is unset we seal cookies with a random per-instance secret
-// (logged as a warning), so a fresh clone or a Vercel import boots as-is.
-// Trade-off: sessions are invalidated whenever the process restarts or a new
-// serverless instance starts. Set SESSION_PASSWORD for any real deployment.
-const rawEnv = cleanEnv(process.env)
+// SESSION_PASSWORD fallback. A *pure demo* (demo mode on, and no integration
+// that guards real data or side effects: database, GitHub OAuth, Resend email,
+// Polar billing) gets a deterministic secret so sessions survive across
+// serverless instances — a forged cookie there grants nothing beyond the
+// public "Continue as demo user" button (sample data only). Anything else gets
+// a random per-instance secret plus a warning (sessions reset on restart).
+// Real deployments should set SESSION_PASSWORD (openssl rand -base64 32).
+const REAL_INTEGRATION_VARS = ['DATABASE_URL', 'GITHUB_CLIENT_ID', 'RESEND_API_KEY', 'POLAR_ACCESS_TOKEN']
+export function fallbackSessionPassword(raw: Record<string, string | undefined>): { value: string, stable: boolean } {
+  const pureDemo = resolveDemoMode(raw['DEMO_MODE'], process.env['NODE_ENV'])
+    && REAL_INTEGRATION_VARS.every(k => !raw[k])
+  if (pureDemo) {
+    const seed = `uipkge-pure-demo:${raw['VERCEL_PROJECT_ID'] ?? 'local'}`
+    return { value: createHash('sha256').update(seed).digest('base64'), stable: true }
+  }
+  return { value: randomBytes(32).toString('base64'), stable: false }
+}
+
+const rawEnv: Record<string, string | undefined> = cleanEnv(process.env)
 if (!rawEnv.SESSION_PASSWORD) {
-  rawEnv.SESSION_PASSWORD = randomBytes(32).toString('base64')
-  if (!building) {
+  const fallback = fallbackSessionPassword(rawEnv)
+  rawEnv.SESSION_PASSWORD = fallback.value
+  if (!building && !fallback.stable) {
     console.warn(
       '⚠️  SESSION_PASSWORD is not set — using a random per-instance secret. Sessions reset on every '
       + 'restart / new instance. Set SESSION_PASSWORD (openssl rand -base64 32) for real deployments.',
