@@ -8,7 +8,7 @@
 
 A production-grade **SvelteKit SaaS boilerplate / starter kit** built with **SvelteKit 2, Svelte 5 (runes), TypeScript and Tailwind CSS 4**, on the shadcn-svelte-compatible [**`@uipkge`**](https://uipkge.dev/svelte/components) UI registry. It ships GitHub OAuth + magic-link authentication, Polar billing, a Drizzle ORM + Postgres schema, an admin area with role-based access control (RBAC), team invites, API keys, an audit log, i18n with svelte-i18n, Sentry / PostHog / Axiom wiring, and a full dashboard (charts, kanban, data table, calendar, map). **Every external integration is gated on env**, so a fresh clone runs in demo mode with no database, OAuth app or API keys.
 
-**[Live demo](https://sveltekit-boilerplate-gamma-gray.vercel.app/login)** · **[Vue/Nuxt sibling: nuxt-boilerplate](https://github.com/uday-a/nuxt-boilerplate)** · **[React/Next.js sibling: next-boilerplate](https://github.com/uday-a/next-boilerplate)** · **[UI registry: uipkge.dev](https://uipkge.dev)**
+**[Live demo](https://sveltekit-boilerplate-gamma-gray.vercel.app/login)** · **[Vue/Nuxt sibling: nuxt-boilerplate](https://github.com/uday-a/nuxt-boilerplate)** · **[React/Next.js sibling: next-boilerplate](https://github.com/uday-a/next-boilerplate)** · **[Angular sibling: angular-boilerplate](https://github.com/uday-a/angular-boilerplate)** · **[UI registry: uipkge.dev](https://uipkge.dev)**
 
 - **Auth:** GitHub OAuth, passwordless magic links, demo sign-in, sealed `iron-session` cookies, team invites by token
 - **Billing:** Polar checkout, customer portal and signature-verified subscription webhooks
