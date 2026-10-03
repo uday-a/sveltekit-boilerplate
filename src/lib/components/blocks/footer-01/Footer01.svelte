@@ -4,7 +4,7 @@
   import { Input } from '$lib/components/ui/input'
   import { Separator } from '$lib/components/ui/separator'
 
-  const REPO_URL = 'https://github.com/uipkge/sveltekit-boilerplate'
+  const REPO_URL = 'https://github.com/uday-a/sveltekit-boilerplate'
 
   let newsletter = $state('')
   let subscribed = $state(false)

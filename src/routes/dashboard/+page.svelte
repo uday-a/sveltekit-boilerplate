@@ -208,7 +208,7 @@
         target: '[data-tour="github"]',
         title: t('dashboard.tour.steps.github.title'),
         description: t('dashboard.tour.steps.github.description'),
-        action: { label: t('dashboard.tour.steps.github.action'), href: 'https://github.com/uday-a/nuxt-boilerplate' },
+        action: { label: t('dashboard.tour.steps.github.action'), href: 'https://github.com/uday-a/sveltekit-boilerplate' },
         ...nav,
       },
     ]

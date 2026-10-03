@@ -93,7 +93,7 @@
       </div>
       <div class="flex items-center gap-1 px-2 sm:gap-3">
         <a
-          href="https://github.com/uipkge/sveltekit-boilerplate"
+          href="https://github.com/uday-a/sveltekit-boilerplate"
           target="_blank"
           rel="noreferrer"
           data-tour="github"
