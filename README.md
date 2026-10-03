@@ -94,7 +94,7 @@ Settings pages that talk to the backend: **general** and **account** (`/api/me/p
 ### Developer experience
 
 - **SvelteKit 2** + **Svelte 5** runes (`$state`, `$derived`, `.svelte.ts` stores) + **TypeScript**
-- **Vite** dev server, `adapter-node` production build
+- **Vite** dev server, `adapter-vercel` on Vercel / `adapter-node` elsewhere
 - **zod-validated env** at boot (`src/lib/server/env.ts`) — empty values count as unset; invalid or half-configured integrations (Polar token without webhook secret, Axiom token without dataset) fail loud
 - **`components.json`** pre-wired for the `@uipkge` Svelte registry
 - **ESLint 9** (`eslint-plugin-svelte`, `@stylistic`), **`svelte-check`** typecheck, **Vitest** unit tests, **Playwright** end-to-end tests
@@ -238,7 +238,7 @@ Browse the catalog at **[uipkge.dev/svelte/components](https://uipkge.dev/svelte
 
 | Layer | Library |
 |---|---|
-| Framework | [SvelteKit 2](https://svelte.dev/docs/kit), [Svelte 5](https://svelte.dev), TypeScript, Vite, `adapter-node` |
+| Framework | [SvelteKit 2](https://svelte.dev/docs/kit), [Svelte 5](https://svelte.dev), TypeScript, Vite, `adapter-vercel` / `adapter-node` |
 | Auth | [iron-session](https://github.com/vvo/iron-session) + [arctic](https://arcticjs.dev) GitHub OAuth + magic links |
 | ORM / DB | [Drizzle ORM](https://orm.drizzle.team) + [postgres](https://github.com/porsager/postgres) |
 | Styling | [Tailwind CSS 4](https://tailwindcss.com), tw-animate-css |
@@ -398,7 +398,35 @@ Playwright needs a browser once: `npx playwright install --with-deps chromium`.
 
 ## Deployment
 
-`adapter-node` builds a standalone Node server — deploy it anywhere that runs Node (Docker, Fly.io, Railway, Render, a VPS):
+`svelte.config.js` picks the adapter at build time: on Vercel (which sets `VERCEL=1` during its build) it uses `@sveltejs/adapter-vercel` (Node 22 serverless functions); everywhere else `npm run build` emits a standalone `adapter-node` server.
+
+### Deploy to Vercel
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/uday-a/sveltekit-boilerplate&env=SESSION_PASSWORD,PUBLIC_SITE_URL,DEMO_MODE&envDescription=SESSION_PASSWORD%3A%20openssl%20rand%20-base64%2032.%20PUBLIC_SITE_URL%3A%20your%20deployment%20URL.%20DEMO_MODE%3A%20true%20only%20for%20a%20public%20demo%20(demo%20sessions%20are%20admin)%2C%20otherwise%20false.&project-name=sveltekit-boilerplate&repository-name=sveltekit-boilerplate)
+
+1. **Add New → Project** in the Vercel dashboard and import the repo. The SvelteKit framework preset is auto-detected; keep the default build command and output.
+2. Set environment variables (Project → Settings → Environment Variables):
+
+   | Variable | Required | Value |
+   | --- | --- | --- |
+   | `SESSION_PASSWORD` | yes | 32+ random chars — `openssl rand -base64 32` |
+   | `PUBLIC_SITE_URL` | yes | your deployment URL, e.g. `https://your-app.vercel.app` (used by OAuth redirects and emails; defaults to localhost) |
+   | `DEMO_MODE` | for a public demo | `true` to enable demo sign-in (see the warning below); leave unset or `false` otherwise |
+   | `DATABASE_URL`, `GITHUB_CLIENT_ID`/`GITHUB_CLIENT_SECRET`, `RESEND_API_KEY`, `POLAR_*`, `AXIOM_*`, `PUBLIC_SENTRY_DSN`, `PUBLIC_POSTHOG_*` | optional | see `.env.example` — each integration stays off until its vars are set |
+
+   `PUBLIC_SENTRY_DSN` and `PUBLIC_POSTHOG_*` are inlined at build time, so redeploy after changing them.
+3. Deploy. Vercel sets `NODE_ENV=production`, so session cookies are `secure` and demo mode is off unless `DEMO_MODE=true`.
+
+Serverless caveats:
+
+- **Rate limits** (`src/lib/server/rate-limit.ts`) are in-memory per function instance — they reset on cold starts and are not shared between instances. Swap in a shared store (e.g. Upstash Redis) if you need a real limit.
+- **Database**: use a pooled connection string (Neon pooled URL, Supabase transaction pooler on port 6543). The `postgres` driver already runs with `prepare: false`, which poolers require.
+- **Axiom** batches logs in memory and flushes on an interval; a function can freeze before that flush, so some log lines may be dropped.
+- The app never writes to the file system, so the read-only serverless FS is not an issue.
+
+### Self-hosting (Node)
+
+A plain build produces a standalone Node server — deploy it anywhere that runs Node (Docker, Fly.io, Railway, Render, a VPS):
 
 ```bash
 npm ci
@@ -408,7 +436,7 @@ NODE_ENV=production PORT=3000 ORIGIN=https://your-domain.com node build
 
 `PUBLIC_*` variables are read through `$env/static/public`, so they are **inlined at build time** — set them before `npm run build`. Server-only variables are read from `process.env` at runtime. `ORIGIN` (or `PROTOCOL_HEADER` / `HOST_HEADER` behind a proxy) lets SvelteKit's CSRF check accept same-origin form posts; see the [adapter-node docs](https://svelte.dev/docs/kit/adapter-node).
 
-To deploy on Vercel, Netlify or Cloudflare instead, swap `adapter-node` in `svelte.config.js` for the matching adapter.
+For Netlify or Cloudflare, swap the adapter in `svelte.config.js` for the matching one.
 
 > **`DEMO_MODE` — read before deploying.** Demo sign-in (`POST /auth/demo`) creates an **ADMIN** session for anyone who asks. It is auto-on **only in local development** (`NODE_ENV=development`); every deployed environment (production, preview, staging) has it off by default. To offer a public demo, set `DEMO_MODE=true` **explicitly** on that deployment. Otherwise leave it unset or set `DEMO_MODE=false`.
 
@@ -420,7 +448,7 @@ To deploy on Vercel, Netlify or Cloudflare instead, swap `adapter-node` in `svel
 - [ ] Register the OAuth callback: `https://<host>/auth/github/callback`.
 - [ ] Register the Polar webhook: `https://<host>/api/webhooks/polar`, and set `POLAR_SERVER=production`.
 - [ ] Run `npx drizzle-kit migrate` against the production `DATABASE_URL`.
-- [ ] Note: rate limits are in-memory per process — swap in a shared store if you run multiple instances.
+- [ ] Note: rate limits are in-memory per process (per function instance on Vercel) — swap in a shared store if you run multiple instances.
 
 ---
 

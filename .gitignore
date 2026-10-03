@@ -2,6 +2,7 @@
 .svelte-kit/
 build/
 dist/
+.vercel/
 
 # Node dependencies
 node_modules/
