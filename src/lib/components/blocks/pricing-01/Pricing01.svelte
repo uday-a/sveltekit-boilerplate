@@ -6,6 +6,8 @@
   export type PricingPlan = 'pro' | 'team' | 'enterprise'
 
   export interface Pricing01Props {
+    /** Render the heading as the page's H1 (on /pricing) and drop the eyebrow. */
+    page?: boolean
     onSubscribe?: (plan: PricingPlan, cycle: BillingCycle) => void
     onContactSales?: () => void
   }
@@ -18,7 +20,7 @@
   import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '$lib/components/ui/card'
   import { ToggleGroup, ToggleGroupItem } from '$lib/components/ui/toggle-group'
 
-  let { onSubscribe, onContactSales }: Pricing01Props = $props()
+  let { page = false, onSubscribe, onContactSales }: Pricing01Props = $props()
 
   let cycle: BillingCycle = $state('monthly')
 </script>
@@ -35,10 +37,14 @@
 {/snippet}
 
 <section data-slot="pricing-01" class="bg-background">
-  <div class="mx-auto max-w-6xl px-6 py-24">
+  <div class={['mx-auto max-w-6xl px-6', page ? 'py-4' : 'py-24']}>
     <div class="mb-10 text-center">
-      <p class="text-muted-foreground text-xs font-medium tracking-wider uppercase">Pricing</p>
-      <h2 class="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">Plans for teams of every size</h2>
+      {#if !page}
+        <p class="text-muted-foreground text-xs font-medium tracking-wider uppercase">Pricing</p>
+      {/if}
+      <svelte:element this={page ? 'h1' : 'h2'} class="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">
+        Plans for teams of every size
+      </svelte:element>
       <p class="text-muted-foreground mx-auto mt-3 max-w-xl text-lg">
         No hidden fees. Cancel anytime. Save 20% with annual billing.
       </p>

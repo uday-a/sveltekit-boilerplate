@@ -1,30 +1,34 @@
 <script lang="ts">
   import { page } from '$app/state'
-  import { FileQuestion } from '@lucide/svelte'
+  import { buttonVariants } from '$lib/components/ui/button'
+
+  const is404 = $derived(page.status === 404)
+  const title = $derived(is404 ? 'Page not found' : 'Something broke')
+  const description = $derived(
+    is404
+      ? 'The page you were looking for doesn’t exist or was moved.'
+      : page.error?.message || 'An unexpected error occurred.',
+  )
 </script>
 
 <svelte:head>
-  <title>{page.status === 404 ? 'Page not found' : 'Something broke'} | UIPKGE</title>
+  <title>{title} | UIPKGE</title>
 </svelte:head>
 
-<div class="flex min-h-svh flex-col items-center justify-center gap-4 p-6 text-center">
-  <FileQuestion class="text-muted-foreground size-10" aria-hidden="true" />
-  <div class="space-y-1">
-    <h1 class="text-2xl font-semibold tracking-tight">
-      {page.status === 404 ? 'Page not found' : 'Something broke'}
-    </h1>
-    <p class="text-muted-foreground text-sm">
-      {page.status === 404
-        ? "The page you're looking for doesn't exist or was moved."
-        : 'An unexpected error occurred. Please try again.'}
+<div class="bg-background text-foreground min-h-screen">
+  <main class="mx-auto flex min-h-screen max-w-xl flex-col items-center justify-center px-6 py-16 text-center">
+    <p class="text-muted-foreground font-mono text-sm tracking-widest">
+      {page.status ?? 'ERROR'}
     </p>
-  </div>
-  <div class="flex items-center gap-2">
-    <a href="/" class="bg-primary text-primary-foreground hover:bg-primary/90 inline-flex h-9 items-center rounded-md px-4 text-sm font-medium">
-      Go home
-    </a>
-    <a href="/dashboard" class="border-border bg-card hover:bg-muted inline-flex h-9 items-center rounded-md border px-4 text-sm font-medium">
-      Dashboard
-    </a>
-  </div>
+    <h1 class="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">
+      {title}
+    </h1>
+    <p class="text-muted-foreground mt-3 text-base">
+      {description}
+    </p>
+    <div class="mt-8 flex gap-3">
+      <a href="/" class={buttonVariants()}>Go home</a>
+      <a href="/dashboard" class={buttonVariants({ variant: 'outline' })}>Dashboard</a>
+    </div>
+  </main>
 </div>
