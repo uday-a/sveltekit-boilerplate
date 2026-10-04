@@ -49,7 +49,6 @@
 
 <svelte:head>
   <title>Pricing | UIPKGE</title>
-  <meta name="description" content="Simple, transparent pricing for teams of every size." />
 </svelte:head>
 
 <div class="bg-background text-foreground min-h-screen">

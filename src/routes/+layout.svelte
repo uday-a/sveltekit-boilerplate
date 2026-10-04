@@ -3,6 +3,7 @@
   import { onMount } from 'svelte'
   import { get } from 'svelte/store'
   import { afterNavigate } from '$app/navigation'
+  import { page } from '$app/state'
   import { env as publicEnv } from '$env/dynamic/public'
   // Runtime env so unset PostHog vars don't fail the build.
   const { PUBLIC_POSTHOG_HOST, PUBLIC_POSTHOG_KEY } = publicEnv
@@ -41,6 +42,16 @@
     trackPageview(navigation.to?.url.href ?? window.location.href)
   })
 </script>
+
+<!-- One description tag for every page (svelte:head doesn't dedupe): a page
+     sets `description` from its load, otherwise the site default applies. -->
+<svelte:head>
+  <meta
+    name="description"
+    content={page.data.description ??
+      'SvelteKit 2 SaaS boilerplate — auth, database, billing, email, analytics, and observability baked in.'}
+  />
+</svelte:head>
 
 {@render children()}
 <Toaster />

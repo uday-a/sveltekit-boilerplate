@@ -14,10 +14,6 @@
 
 <svelte:head>
   <title>The workspace your team will actually use | UIPKGE</title>
-  <meta
-    name="description"
-    content="A 100% UIPKGE-registry-driven SvelteKit boilerplate. Every UI surface ships from the registry; you own every line."
-  />
 </svelte:head>
 
 <div class="bg-background text-foreground min-h-screen">

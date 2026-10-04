@@ -23,6 +23,8 @@ declare global {
     interface PageData {
       user?: SessionUser | null
       demo?: boolean
+      // Page meta description; the root layout falls back to the site default.
+      description?: string
     }
     // interface PageState {}
     // interface Platform {}
