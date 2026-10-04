@@ -1,6 +1,6 @@
 <script lang="ts">
-  import { onMount } from 'svelte'
-  import { Loader2 } from '@lucide/svelte'
+  import { onMount, untrack } from 'svelte'
+  import { AlertCircle, CheckCircle2, Loader2 } from '@lucide/svelte'
   import { Avatar, AvatarFallback, AvatarImage } from '$lib/components/ui/avatar'
   import { Button } from '$lib/components/ui/button'
   import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '$lib/components/ui/card'
@@ -8,9 +8,13 @@
   import { Label } from '$lib/components/ui/label'
   import { Separator } from '$lib/components/ui/separator'
   import { Textarea } from '$lib/components/ui/textarea'
-  import { FormStatus } from '$lib/components/ui/form'
-  import { Page, PageHeader, PageHeaderHeading } from '$lib/components/ui/page'
+  import { Page, PageBody, PageHeader, PageHeaderHeading } from '$lib/components/ui/page'
+  import { page } from '$app/state'
+  import { routeLabel } from '$lib/breadcrumb-labels'
+  import { t } from '$lib/i18n'
   import { apiFetch, type ApiResponse } from '$lib/api'
+
+  const title = $derived(routeLabel(page.url.pathname, $t))
 
   let { data }: { data: App.PageData } = $props()
   const user = $derived(data.user ?? null)
@@ -26,7 +30,9 @@
 
   // Initialize from server, keep email read-only (changing it requires the
   // reverification flow which lives in the magic-link branch, not here).
-  let name = $state('')
+  // Seeded from the session so the avatar initials render on first paint;
+  // the profile fetch below replaces it with the stored name.
+  let name = $state(untrack(() => data.user?.name ?? ''))
   let bio = $state('')
   // Read-only email comes from the session (root layout data). Derived, not
   // $state+$effect: the field is disabled so it can never be edited and a
@@ -76,110 +82,118 @@
 </script>
 
 <svelte:head>
-  <title>Account · Settings | UIPKGE</title>
+  <title>{title} | UIPKGE</title>
 </svelte:head>
 
-<Page class="max-w-3xl">
+<Page>
   <PageHeader>
-    <PageHeaderHeading title="Account" description="Your personal profile and credentials." />
+    <PageHeaderHeading {title} description="Your personal profile and credentials." />
   </PageHeader>
 
-  <Card>
-    <CardHeader>
-      <CardTitle class="text-base">Profile</CardTitle>
-      <CardDescription>How you appear in the workspace.</CardDescription>
-    </CardHeader>
-    <CardContent class="space-y-4">
-      <div class="flex items-center gap-4">
-        <Avatar class="size-16">
-          {#if user?.avatar}
-            <AvatarImage src={user.avatar} alt={name} />
-          {/if}
-          <AvatarFallback>{initials}</AvatarFallback>
-        </Avatar>
-        <div class="space-y-1">
-          <Button variant="outline" size="sm">Upload photo</Button>
-          <p class="text-muted-foreground text-xs">PNG or JPG, up to 2MB.</p>
+  <PageBody class="max-w-3xl space-y-4">
+    <Card>
+      <CardHeader>
+        <CardTitle class="text-base">Profile</CardTitle>
+        <CardDescription>How you appear in the workspace.</CardDescription>
+      </CardHeader>
+      <CardContent class="space-y-4">
+        <div class="flex items-center gap-4">
+          <Avatar class="size-16">
+            {#if user?.avatar}
+              <AvatarImage src={user.avatar} alt={name} />
+            {/if}
+            <AvatarFallback>{initials}</AvatarFallback>
+          </Avatar>
+          <div class="space-y-1">
+            <Button variant="outline" size="sm">Upload photo</Button>
+            <p class="text-muted-foreground text-xs">PNG or JPG, up to 2MB.</p>
+          </div>
         </div>
-      </div>
-      <div class="grid gap-2">
-        <Label for="acct-name">Full name</Label>
-        <Input id="acct-name" bind:value={name} />
-      </div>
-      <div class="grid gap-2">
-        <Label for="acct-bio">Bio</Label>
-        <Textarea id="acct-bio" bind:value={bio} rows={3} placeholder="A short paragraph about yourself." />
-        <p class="text-muted-foreground text-xs">500 characters max. Visible to workspace members.</p>
-      </div>
-      <div class="grid gap-2">
-        <Label for="acct-email">Email</Label>
-        <Input id="acct-email" value={email} type="email" disabled />
-        <p class="text-muted-foreground text-xs">
-          Email comes from your GitHub account. Change it there or add email/password auth to edit here.
-        </p>
-      </div>
-    </CardContent>
-  </Card>
-
-  <Card>
-    <CardHeader>
-      <CardTitle class="text-base">Password</CardTitle>
-      <CardDescription>Use 12+ characters with a mix of letters, numbers, and symbols.</CardDescription>
-    </CardHeader>
-    <CardContent class="space-y-4">
-      <div class="grid gap-2">
-        <Label for="pw-current">Current password</Label>
-        <Input id="pw-current" bind:value={currentPassword} type="password" />
-      </div>
-      <div class="grid gap-2">
-        <Label for="pw-new">New password</Label>
-        <Input id="pw-new" bind:value={newPassword} type="password" />
-      </div>
-      <div class="grid gap-2">
-        <Label for="pw-confirm">Confirm new password</Label>
-        <Input id="pw-confirm" bind:value={confirmPassword} type="password" />
-      </div>
-    </CardContent>
-  </Card>
-
-  <Card class="border-destructive/40">
-    <CardHeader>
-      <CardTitle class="text-base text-destructive">Danger zone</CardTitle>
-      <CardDescription>Irreversible account actions.</CardDescription>
-    </CardHeader>
-    <CardContent class="space-y-4">
-      <div class="flex items-start justify-between gap-4">
-        <div class="space-y-0.5">
-          <p class="text-sm font-medium">Delete account</p>
+        <div class="grid gap-2">
+          <Label for="acct-name">Full name</Label>
+          <Input id="acct-name" bind:value={name} />
+        </div>
+        <div class="grid gap-2">
+          <Label for="acct-bio">Bio</Label>
+          <Textarea id="acct-bio" bind:value={bio} rows={3} placeholder="A short paragraph about yourself." />
+          <p class="text-muted-foreground text-xs">500 characters max. Visible to workspace members.</p>
+        </div>
+        <div class="grid gap-2">
+          <Label for="acct-email">Email</Label>
+          <Input id="acct-email" value={email} type="email" disabled />
           <p class="text-muted-foreground text-xs">
-            Permanently remove your account and all personal data. Workspace data is retained per your billing plan.
+            Your email comes from your sign-in provider. Change it there to update it here.
           </p>
         </div>
-        <Button variant="outline" class="text-destructive hover:text-destructive">Delete account</Button>
-      </div>
-      <Separator />
-      <div class="flex items-start justify-between gap-4">
-        <div class="space-y-0.5">
-          <p class="text-sm font-medium">Export data</p>
-          <p class="text-muted-foreground text-xs">Download a JSON archive of your personal data.</p>
-        </div>
-        <Button variant="outline">Request export</Button>
-      </div>
-    </CardContent>
-  </Card>
+      </CardContent>
+    </Card>
 
-  <div class="flex items-center justify-end gap-3">
-    {#if status.kind === 'saved'}
-      <FormStatus status="success" message={status.demo ? 'Saved (demo — not persisted)' : 'Saved'} />
-    {:else if status.kind === 'error'}
-      <FormStatus status="error" message={status.message} />
-    {/if}
-    <Button variant="outline">Cancel</Button>
-    <Button disabled={status.kind === 'saving' || !name} onclick={save}>
-      {#if status.kind === 'saving'}
-        <Loader2 class="size-4 animate-spin" />
+    <Card>
+      <CardHeader>
+        <CardTitle class="text-base">Password</CardTitle>
+        <CardDescription>Use 12+ characters with a mix of letters, numbers, and symbols.</CardDescription>
+      </CardHeader>
+      <CardContent class="space-y-4">
+        <div class="grid gap-2">
+          <Label for="pw-current">Current password</Label>
+          <Input id="pw-current" bind:value={currentPassword} type="password" />
+        </div>
+        <div class="grid gap-2">
+          <Label for="pw-new">New password</Label>
+          <Input id="pw-new" bind:value={newPassword} type="password" />
+        </div>
+        <div class="grid gap-2">
+          <Label for="pw-confirm">Confirm new password</Label>
+          <Input id="pw-confirm" bind:value={confirmPassword} type="password" />
+        </div>
+      </CardContent>
+    </Card>
+
+    <div class="flex items-center justify-end gap-2">
+      {#if status.kind === 'saved'}
+        <div class="text-success flex items-center gap-2 text-sm">
+          <CheckCircle2 class="size-4" />
+          {status.demo ? 'Saved (demo — not persisted)' : 'Saved'}
+        </div>
+      {:else if status.kind === 'error'}
+        <div class="text-destructive flex items-center gap-2 text-sm">
+          <AlertCircle class="size-4" />
+          {status.message}
+        </div>
       {/if}
-      Save changes
-    </Button>
-  </div>
+      <Button variant="outline">Cancel</Button>
+      <Button disabled={status.kind === 'saving' || !name} onclick={save}>
+        {#if status.kind === 'saving'}
+          <Loader2 class="size-4 animate-spin" />
+        {/if}
+        Save changes
+      </Button>
+    </div>
+
+    <Card class="border-destructive/40">
+      <CardHeader>
+        <CardTitle class="text-base text-destructive">Danger zone</CardTitle>
+        <CardDescription>Irreversible account actions.</CardDescription>
+      </CardHeader>
+      <CardContent class="space-y-4">
+        <div class="flex items-start justify-between gap-4">
+          <div class="space-y-0.5">
+            <p class="text-sm font-medium">Delete account</p>
+            <p class="text-muted-foreground text-xs">
+              Permanently remove your account and all personal data. Workspace data is retained per your billing plan.
+            </p>
+          </div>
+          <Button variant="destructive">Delete account</Button>
+        </div>
+        <Separator />
+        <div class="flex items-start justify-between gap-4">
+          <div class="space-y-0.5">
+            <p class="text-sm font-medium">Export data</p>
+            <p class="text-muted-foreground text-xs">Download a JSON archive of your personal data.</p>
+          </div>
+          <Button variant="outline">Request export</Button>
+        </div>
+      </CardContent>
+    </Card>
+  </PageBody>
 </Page>

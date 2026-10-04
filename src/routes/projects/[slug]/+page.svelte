@@ -16,28 +16,25 @@
   import { Label } from '$lib/components/ui/label'
   import { Textarea } from '$lib/components/ui/textarea'
   import { EmptyState } from '$lib/components/ui/empty-state'
-  import { Page, PageHeader, PageHeaderHeading } from '$lib/components/ui/page'
+  import { Page, PageBody, PageHeader, PageHeaderHeading } from '$lib/components/ui/page'
+  import { Skeleton } from '$lib/components/ui/skeleton'
+  import { routeLabel } from '$lib/breadcrumb-labels'
   import { apiFetch, type ApiResponse } from '$lib/api'
   import { locale, t } from '$lib/i18n'
+  import type { PageData } from './$types'
+  import type { Project } from './+page'
 
-  interface Project {
-    id: number
-    slug: string
-    name: string
-    description: string | null
-    ownerId: number
-    createdAt: string | Date
-    updatedAt: string | Date
-  }
+  let { data }: { data: PageData } = $props()
 
   const slug = $derived(String(page.params.slug ?? ''))
 
-  let project = $state<Project | null>(null)
-  let pending = $state(true)
-  let loadError = $state<string | null>(null)
+  // Writable deriveds: seeded from the load (SSR + client nav between
+  // slugs), overwritten in place by save/retry re-fetches.
+  let project = $derived<Project | null>(data.project)
+  let loadError = $derived<string | null>(data.loadError)
+  let pending = $state(false)
 
   async function load(currentSlug: string) {
-    if (!currentSlug) return
     pending = true
     loadError = null
     const res: ApiResponse<{ project: Project }> = await apiFetch(`/api/projects/${currentSlug}`)
@@ -51,19 +48,14 @@
     pending = false
   }
 
-  $effect(() => {
-    void load(slug)
-  })
+  // Detail pages have no nav label of their own; the H1 and tab title use
+  // the project's name (falling back to the route label while it loads).
+  const title = $derived(project?.name ?? routeLabel(page.url.pathname, $t))
 
-  // Edit form. Initialized from server data each time it arrives.
-  let form = $state({ name: '', description: '' })
-
-  $effect(() => {
-    if (project) {
-      form.name = project.name
-      form.description = project.description ?? ''
-    }
-  })
+  // Edit form. Re-initialized from server data each time it arrives
+  // (writable deriveds, so the fields are filled on SSR too).
+  let formName = $derived(project?.name ?? '')
+  let formDescription = $derived(project?.description ?? '')
 
   let saveState = $state<'idle' | 'saving' | 'error'>('idle')
   let saveError = $state<string | null>(null)
@@ -71,17 +63,13 @@
   // Designed confirm dialog instead of window.confirm(), matching delete-user.
   let confirmDelete = $state(false)
 
-  const createdLabel = $derived(
-    project ? new Date(project.createdAt).toLocaleDateString($locale ?? 'en', { month: 'short', day: 'numeric', year: 'numeric' }) : '',
-  )
-
   async function save() {
     if (!project) return
     saveState = 'saving'
     saveError = null
     const res: ApiResponse<{ project: Project }> = await apiFetch(`/api/projects/${slug}`, {
       method: 'PUT',
-      body: JSON.stringify({ name: form.name, description: form.description || null }),
+      body: JSON.stringify({ name: formName, description: formDescription || null }),
     })
     if (!res.ok) {
       saveError = res.error.message
@@ -110,66 +98,78 @@
 </script>
 
 <svelte:head>
-  <title>{project?.name ?? slug} · Projects | UIPKGE</title>
+  <title>{title} | UIPKGE</title>
 </svelte:head>
 
-<Page class="max-w-3xl">
+<Page>
   <PageHeader>
     <PageHeaderHeading
-      title={project?.name ?? slug}
-      description={project ? `Project · ${project.slug} · created ${createdLabel}` : undefined}
+      {title}
+      description={project ? `Created ${new Date(project.createdAt).toLocaleDateString($locale ?? 'en')}` : undefined}
     />
   </PageHeader>
 
-  {#if loadError}
-    <Card>
-      <EmptyState icon={AlertCircle} title={$t('common.loadFailedTitle')} description={$t('common.loadFailed')} role="alert">
-        <Button variant="outline" size="sm" class="mt-4" onclick={() => load(slug)}>{$t('common.retry')}</Button>
+  <PageBody class="max-w-3xl space-y-4">
+    {#if loadError}
+      <EmptyState
+        icon={AlertCircle}
+        role="alert"
+        title="Couldn't load this project"
+        description="It may have been deleted, or something went wrong on our side."
+      >
+        <div class="mt-4 flex justify-center gap-2">
+          <Button size="sm" variant="outline" onclick={() => load(slug)}>Retry</Button>
+          <Button size="sm" variant="ghost">
+            {#snippet child({ props })}
+              <a href="/projects" {...props}>Back to projects</a>
+            {/snippet}
+          </Button>
+        </div>
       </EmptyState>
-    </Card>
-  {:else if pending}
-    <p class="text-muted-foreground text-sm">{$t('common.loading')}</p>
-  {:else if project}
-    <Card>
-      <CardHeader>
-        <CardTitle class="text-base">Details</CardTitle>
-        <CardDescription>Edit the project metadata. Slug is immutable after creation.</CardDescription>
-      </CardHeader>
-      <CardContent class="space-y-4">
-        <div class="grid gap-2">
-          <Label for="p-name">Name</Label>
-          <Input id="p-name" bind:value={form.name} />
-        </div>
-        <div class="grid gap-2">
-          <Label for="p-desc">Description</Label>
-          <Textarea id="p-desc" bind:value={form.description} rows={4} />
-        </div>
-        {#if saveError}
-          <div class="text-destructive flex items-center gap-2 text-sm">
-            <AlertCircle class="size-4" />
-            {saveError}
+    {:else if pending}
+      <Skeleton class="h-72 rounded-xl" aria-busy="true" />
+    {:else if project}
+      <Card>
+        <CardHeader>
+          <CardTitle class="text-base">Details</CardTitle>
+          <CardDescription>Rename the project or update its description.</CardDescription>
+        </CardHeader>
+        <CardContent class="space-y-4">
+          <div class="grid gap-2">
+            <Label for="p-name">Name</Label>
+            <Input id="p-name" bind:value={formName} />
           </div>
-        {/if}
-        <div class="flex justify-between">
-          <Button
-            variant="ghost"
-            disabled={deleteState === 'deleting'}
-            class="text-destructive hover:text-destructive"
-            onclick={() => (confirmDelete = true)}
-          >
-            <Trash2 class="size-4" />
-            Delete project
-          </Button>
-          <Button disabled={saveState === 'saving' || !form.name} onclick={save}>
-            {#if saveState === 'saving'}
-              <Loader2 class="size-4 animate-spin" />
-            {/if}
-            Save changes
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
-  {/if}
+          <div class="grid gap-2">
+            <Label for="p-desc">Description</Label>
+            <Textarea id="p-desc" bind:value={formDescription} rows={4} />
+          </div>
+          {#if saveError}
+            <div class="text-destructive flex items-center gap-2 text-sm" role="alert">
+              <AlertCircle class="size-4 shrink-0" aria-hidden="true" />
+              {saveError}
+            </div>
+          {/if}
+          <div class="flex justify-between">
+            <Button
+              variant="ghost"
+              disabled={deleteState === 'deleting'}
+              class="text-destructive hover:text-destructive"
+              onclick={() => (confirmDelete = true)}
+            >
+              <Trash2 class="size-4" aria-hidden="true" />
+              Delete project
+            </Button>
+            <Button disabled={saveState === 'saving' || !formName} onclick={save}>
+              {#if saveState === 'saving'}
+                <Loader2 class="size-4 animate-spin" aria-hidden="true" />
+              {/if}
+              Save changes
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    {/if}
+  </PageBody>
 
   <!-- Delete confirmation -->
   <Dialog bind:open={confirmDelete}>

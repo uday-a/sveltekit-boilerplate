@@ -1,7 +1,8 @@
 <script lang="ts">
   import { untrack } from 'svelte'
   import { toast } from 'svelte-sonner'
-  import { AlertCircle, CheckCircle2, CloudOff, Loader2, Pencil, RotateCcw, Trash2, UserPlus, UserX } from '@lucide/svelte'
+  import { AlertCircle, Calendar as CalendarIcon, CheckCircle2, CloudOff, Loader2, Pencil, RotateCcw, Search, Trash2, UserPlus, UserX } from '@lucide/svelte'
+  import { DateFormatter, getLocalTimeZone } from '@internationalized/date'
   import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '$lib/components/ui/card'
   import { Badge } from '$lib/components/ui/badge'
   import { Button } from '$lib/components/ui/button'
@@ -12,17 +13,22 @@
   import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '$lib/components/ui/select'
   import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '$lib/components/ui/dialog'
   import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '$lib/components/ui/tooltip'
-  import { Page, PageHeader, PageHeaderHeading } from '$lib/components/ui/page'
+  import { Popover, PopoverContent, PopoverTrigger } from '$lib/components/ui/popover'
+  import { RangeCalendar, type RangeCalendarRange } from '$lib/components/ui/range-calendar'
+  import { Page, PageBody, PageHeader, PageHeaderHeading } from '$lib/components/ui/page'
+  import { page } from '$app/state'
+  import { routeLabel } from '$lib/breadcrumb-labels'
   import { EmptyState } from '$lib/components/ui/empty-state'
   import { apiFetch, type ApiResponse } from '$lib/api'
   import { locale, t } from '$lib/i18n'
   import type { PageData } from './$types'
 
+  const title = $derived(routeLabel(page.url.pathname, $t))
+
   // Team settings page. Port of Nuxt `settings/team.vue`: live members +
   // invites from /api/team/*, search + role filters, edit / remove row
   // actions (local, with undo toast), invite dialog with client-side email
-  // check, resend + revoke. The joined-date range filter from the nuxt twin
-  // is not ported yet (RangeCalendar now exists — see admin/users).
+  // check, resend + revoke, joined-date range filter.
   let { data }: { data: PageData } = $props()
 
   interface Member {
@@ -101,23 +107,45 @@
   // ── Filters ────────────────────────────────────────────────────────────
   let query = $state('')
   let roleFilter = $state<'all' | typeof ROLES[number]>('all')
+  let joinedRange = $state<RangeCalendarRange | undefined>(undefined)
+  let rangeOpen = $state(false)
+  $effect(() => {
+    if (joinedRange?.start && joinedRange?.end) rangeOpen = false
+  })
+
+  const rangeLabel = $derived.by(() => {
+    const r = joinedRange
+    if (!r?.start || !r?.end) return $t('admin.filters.joined')
+    const df = new DateFormatter($locale ?? 'en', { month: 'short', day: 'numeric', year: 'numeric' })
+    const tz = getLocalTimeZone()
+    return `${df.format(r.start.toDate(tz))} – ${df.format(r.end.toDate(tz))}`
+  })
 
   const filteredMembers = $derived.by(() => {
     const q = query.trim().toLowerCase()
+    const r = joinedRange
+    const tz = getLocalTimeZone()
+    const from = r?.start ? r.start.toDate(tz).getTime() : null
+    // Inclusive end: the whole of the last selected day.
+    const to = r?.end ? r.end.toDate(tz).getTime() + 86_400_000 - 1 : null
     return members.filter((m) => {
       if (roleFilter !== 'all' && m.role !== roleFilter) return false
       if (q && !`${m.name ?? ''} ${m.email}`.toLowerCase().includes(q)) return false
+      const joined = new Date(m.createdAt).getTime()
+      if (from !== null && joined < from) return false
+      if (to !== null && joined > to) return false
       return true
     })
   })
 
   const activeFilters = $derived(
-    (query.trim() ? 1 : 0) + (roleFilter !== 'all' ? 1 : 0),
+    (query.trim() ? 1 : 0) + (roleFilter !== 'all' ? 1 : 0) + (joinedRange?.start ? 1 : 0),
   )
 
   function resetFilters() {
     query = ''
     roleFilter = 'all'
+    joinedRange = undefined
   }
 
   // ── Row actions ────────────────────────────────────────────────────────
@@ -175,10 +203,7 @@
 
   const initials = (n: string) => n.split(' ').map(p => p[0]).join('').slice(0, 2).toUpperCase()
 
-  // SelectValue only resolves labels from mounted items (content mounts on
-  // open), so controlled selects render their label as explicit children.
   const roleName = (r: string) => $t(`admin.roleNames.${r}`)
-  const filterLabel = $derived(roleFilter === 'all' ? $t('admin.filters.allRoles') : roleName(roleFilter))
 
   function formatDate(d: string | Date) {
     return new Date(d).toLocaleDateString($locale ?? 'en', { month: 'short', day: 'numeric', year: 'numeric' })
@@ -194,9 +219,6 @@
   let revokingId = $state<number | null>(null)
   let resendingEmail = $state<string | null>(null)
   let revokeError = $state<string | null>(null)
-
-  const inviteRoleLabel = $derived(roleName(inviteRole))
-  const editRoleLabel = $derived(roleName(editRole))
 
   // Catch obvious typos before the round-trip; the server still validates.
   const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -271,18 +293,18 @@
 </script>
 
 <svelte:head>
-  <title>{$t('settings.team.title')} · Settings | UIPKGE</title>
+  <title>{title} | UIPKGE</title>
 </svelte:head>
 
 <Page>
   <PageHeader>
-    <PageHeaderHeading title={$t('settings.team.title')} description={headerDescription} />
+    <PageHeaderHeading {title} description={headerDescription} />
     {#snippet actions()}
       {#if canInvite && !invitesForbidden}
         <Dialog bind:open={dialogOpen}>
           <DialogTrigger>
             {#snippet child({ props })}
-              <Button {...props}>
+              <Button {...props} size="sm">
                 <UserPlus class="size-4" aria-hidden="true" /> {$t('settings.team.invite')}
               </Button>
             {/snippet}
@@ -292,7 +314,7 @@
               <DialogTitle>{$t('settings.team.dialogTitle')}</DialogTitle>
               <DialogDescription>{$t('settings.team.dialogDescription')}</DialogDescription>
             </DialogHeader>
-            <div class="space-y-3 py-1">
+            <div class="grid gap-4 py-1">
               <div class="grid gap-2">
                 <Label for="invite-email">{$t('settings.team.emailLabel')}</Label>
                 <Input
@@ -306,12 +328,12 @@
                 <Label for="invite-role">{$t('settings.team.roleLabel')}</Label>
                 <Select bind:value={inviteRole}>
                   <SelectTrigger id="invite-role">
-                    <SelectValue>{inviteRoleLabel}</SelectValue>
+                    <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="user">user</SelectItem>
-                    <SelectItem value="editor">editor</SelectItem>
-                    <SelectItem value="admin">admin</SelectItem>
+                    <SelectItem value="user">{roleName('user')}</SelectItem>
+                    <SelectItem value="editor">{roleName('editor')}</SelectItem>
+                    <SelectItem value="admin">{roleName('admin')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -339,298 +361,321 @@
     {/snippet}
   </PageHeader>
 
-  {#if notice}
-    <div
-      class="border-success/30 bg-success/10 text-success flex items-center gap-2 rounded-md border px-3 py-2 text-sm"
-      role="status"
-    >
-      <CheckCircle2 class="size-4" aria-hidden="true" />
-      {notice}
-    </div>
-  {/if}
-
-  {#if membersFailed}
-    <Card>
-      <EmptyState icon={CloudOff} title="Couldn't load the team" description={$t('settings.team.loadFailed')} role="alert" class="p-4">
-        <Button variant="outline" size="sm" class="mt-4" onclick={() => void refreshMembers()}>
-          {$t('settings.activity.states.retry')}
-        </Button>
-      </EmptyState>
-    </Card>
-  {:else}
-    <Card>
-      <!-- Filters -->
-      <div class="flex flex-col gap-2 border-b p-4 sm:flex-row sm:items-center">
-        <div class="w-full sm:w-64">
-          <Input
-            bind:value={query}
-            placeholder={$t('settings.team.search')}
-            aria-label={$t('settings.team.search')}
-          />
-        </div>
-        <Select bind:value={roleFilter}>
-          <SelectTrigger class="sm:w-36" aria-label={$t('admin.filters.role')}>
-            <SelectValue>{filterLabel}</SelectValue>
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">{$t('admin.filters.allRoles')}</SelectItem>
-            {#each ROLES as r (r)}
-              <SelectItem value={r}>{$t(`admin.roleNames.${r}`)}</SelectItem>
-            {/each}
-          </SelectContent>
-        </Select>
-        {#if activeFilters}
-          <Button variant="ghost" size="sm" class="text-muted-foreground gap-1.5" onclick={resetFilters}>
-            <RotateCcw class="size-3.5" aria-hidden="true" />
-            {$t('admin.filters.reset')}
-          </Button>
-        {/if}
-        <span class="text-muted-foreground text-xs whitespace-nowrap tabular-nums sm:ml-auto">
-          {$t('admin.filters.showing', { shown: filteredMembers.length, total: members.length })}
-        </span>
+  <PageBody class="space-y-4">
+    {#if notice}
+      <div
+        class="border-success/30 bg-success/10 text-success flex items-center gap-2 rounded-md border px-3 py-2 text-sm"
+        role="status"
+      >
+        <CheckCircle2 class="size-4" aria-hidden="true" />
+        {notice}
       </div>
+    {/if}
 
-      <TooltipProvider delayDuration={300}>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead scope="col">{$t('settings.team.member')}</TableHead>
-              <TableHead scope="col">{$t('settings.team.role')}</TableHead>
-              <TableHead scope="col">{$t('settings.team.status')}</TableHead>
-              <TableHead scope="col">{$t('settings.team.joined')}</TableHead>
-              <TableHead scope="col" class="w-24 text-right">
-                <span class="sr-only">{$t('admin.actions')}</span>
-              </TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {#if membersPending}
-              <TableRow>
-                <TableCell colspan={5} class="text-muted-foreground text-sm">
-                  {$t('settings.team.loading')}
-                </TableCell>
-              </TableRow>
-            {:else if !filteredMembers.length}
-              <TableRow>
-                <TableCell colspan={5}>
-                  <EmptyState
-                    icon={UserX}
-                    title={members.length ? $t('admin.noMatchTitle') : $t('settings.team.emptyMembers')}
-                    description={members.length ? $t('admin.noMatchDescription') : undefined}
-                    class="whitespace-normal"
-                  >
-                    {#if activeFilters}
-                      <Button variant="outline" size="sm" class="mt-4" onclick={resetFilters}>
-                        {$t('admin.filters.reset')}
-                      </Button>
-                    {/if}
-                  </EmptyState>
-                </TableCell>
-              </TableRow>
-            {:else}
-              {#each filteredMembers as m (m.id)}
-                <TableRow>
-                  <TableCell>
-                    <div class="flex items-center gap-3">
-                      <Avatar class="size-8">
-                        <AvatarFallback class="bg-muted text-muted-foreground text-xs font-medium">
-                          {initials(displayName(m))}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <div class="text-sm font-medium">{displayName(m)}</div>
-                        <div class="text-muted-foreground text-xs">{m.email}</div>
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="outline">{$t(`admin.roleNames.${m.role}`)}</Badge>
-                  </TableCell>
-                  <TableCell>
-                    <span class="flex items-center gap-1.5 text-xs">
-                      <span class="bg-success size-1.5 rounded-full" aria-hidden="true"></span>
-                      {$t('settings.team.active')}
-                    </span>
-                  </TableCell>
-                  <TableCell class="text-muted-foreground text-xs tabular-nums">
-                    {formatDate(m.createdAt)}
-                  </TableCell>
-                  <TableCell class="text-right">
-                    <div class="flex justify-end gap-1">
-                      <Tooltip>
-                        <TooltipTrigger>
-                          {#snippet child({ props })}
-                            <Button
-                              {...props}
-                              variant="ghost"
-                              size="icon"
-                              class="text-muted-foreground hover:text-foreground size-8"
-                              aria-label={$t('admin.editFor', { name: displayName(m) })}
-                              onclick={() => openEdit(m)}
-                            >
-                              <Pencil class="size-4" />
-                            </Button>
-                          {/snippet}
-                        </TooltipTrigger>
-                        <TooltipContent>{$t('admin.menu.edit')}</TooltipContent>
-                      </Tooltip>
-                      <Tooltip>
-                        <TooltipTrigger>
-                          {#snippet child({ props })}
-                            <Button
-                              {...props}
-                              variant="ghost"
-                              size="icon"
-                              class="text-muted-foreground hover:text-destructive hover:bg-destructive/10 size-8"
-                              aria-label={$t('settings.team.removeFor', { name: displayName(m) })}
-                              onclick={() => (removing = m)}
-                            >
-                              <Trash2 class="size-4" />
-                            </Button>
-                          {/snippet}
-                        </TooltipTrigger>
-                        <TooltipContent>{$t('settings.team.remove')}</TooltipContent>
-                      </Tooltip>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              {/each}
-            {/if}
-          </TableBody>
-        </Table>
-      </TooltipProvider>
-    </Card>
-  {/if}
-
-  {#if canInvite && !invitesForbidden}
-    <Card>
-      <CardHeader>
-        <CardTitle class="text-base">{$t('settings.team.pendingTitle')}</CardTitle>
-        <CardDescription>{$t('settings.team.pendingDescription')}</CardDescription>
-      </CardHeader>
-      <CardContent class="divide-y">
-        {#if invitesFailed}
-          <div class="flex flex-wrap items-center justify-between gap-4 py-3 first:pt-0">
-            <span class="text-muted-foreground text-sm">Couldn't load pending invites.</span>
-            <Button variant="outline" size="sm" onclick={() => void refreshInvites()}>
-              {$t('settings.activity.states.retry')}
-            </Button>
+    {#if membersFailed}
+      <Card>
+        <EmptyState icon={CloudOff} title="Couldn't load the team" description={$t('settings.team.loadFailed')} role="alert" class="p-4">
+          <Button variant="outline" size="sm" class="mt-4" onclick={() => void refreshMembers()}>
+            {$t('settings.activity.states.retry')}
+          </Button>
+        </EmptyState>
+      </Card>
+    {:else}
+      <Card>
+        <!-- Filters -->
+        <div class="flex flex-col gap-2 border-b p-4 sm:flex-row sm:items-center">
+          <div class="w-full sm:w-64">
+            <Input
+              bind:value={query}
+              size="small"
+              prefixIcon={Search}
+              allowClear
+              placeholder={$t('settings.team.search')}
+              aria-label={$t('settings.team.search')}
+            />
           </div>
-        {:else if invitesPending}
-          <div class="text-muted-foreground py-3 text-sm first:pt-0">{$t('settings.team.loading')}</div>
-        {:else if !pendingInvites.length}
-          <div class="text-muted-foreground py-3 text-sm first:pt-0">{$t('settings.team.emptyPending')}</div>
-        {:else}
-          {#each pendingInvites as p (p.id)}
-            <div class="flex items-center justify-between gap-4 py-3 first:pt-0 last:pb-0">
-              <div class="space-y-0.5">
-                <p class="text-sm font-medium">{p.email}</p>
-                <p class="text-muted-foreground text-xs tabular-nums">
-                  Invited as {p.role} · {$t('settings.team.expires', { date: formatDate(p.expiresAt) })}
-                </p>
-              </div>
-              <div class="flex items-center gap-2">
+          <Select bind:value={roleFilter}>
+            <SelectTrigger size="sm" class="sm:w-36" aria-label={$t('admin.filters.role')}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">{$t('admin.filters.allRoles')}</SelectItem>
+              {#each ROLES as r (r)}
+                <SelectItem value={r}>{$t(`admin.roleNames.${r}`)}</SelectItem>
+              {/each}
+            </SelectContent>
+          </Select>
+          <Popover bind:open={rangeOpen}>
+            <PopoverTrigger>
+              {#snippet child({ props })}
                 <Button
+                  {...props}
                   variant="outline"
                   size="sm"
-                  disabled={resendingEmail === p.email || revokingId === p.id}
-                  onclick={() => void resendInvite(p)}
+                  class={['justify-start gap-2 font-normal', !joinedRange?.start && 'text-muted-foreground']}
                 >
-                  {#if resendingEmail === p.email}
-                    <Loader2 class="size-4 animate-spin" aria-hidden="true" />
-                  {/if}
-                  {$t('settings.team.resend')}
+                  <CalendarIcon class="size-4" aria-hidden="true" />
+                  {rangeLabel}
                 </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  class="text-destructive"
-                  disabled={revokingId === p.id || resendingEmail === p.email}
-                  onclick={() => void revokeInvite(p.id)}
-                >
-                  {#if revokingId === p.id}
-                    <Loader2 class="size-4 animate-spin" aria-hidden="true" />
-                  {/if}
-                  {$t('settings.team.revoke')}
-                </Button>
-              </div>
-            </div>
-          {/each}
-        {/if}
-        {#if revokeError}
-          <div class="text-destructive flex items-center gap-2 pt-3 text-sm" role="alert">
-            <AlertCircle class="size-4" aria-hidden="true" />
-            {revokeError}
-          </div>
-        {/if}
-      </CardContent>
-    </Card>
-  {:else}
-    <p class="text-muted-foreground text-xs">{$t('settings.team.viewerNote')}</p>
-  {/if}
+              {/snippet}
+            </PopoverTrigger>
+            <PopoverContent align="start" class="w-auto p-0">
+              <RangeCalendar bind:value={joinedRange} />
+            </PopoverContent>
+          </Popover>
+          {#if activeFilters}
+            <Button variant="ghost" size="sm" class="text-muted-foreground gap-1.5" onclick={resetFilters}>
+              <RotateCcw class="size-3.5" aria-hidden="true" />
+              {$t('admin.filters.reset')}
+            </Button>
+          {/if}
+          <span class="text-muted-foreground text-xs whitespace-nowrap tabular-nums sm:ml-auto">
+            {$t('admin.filters.showing', { shown: filteredMembers.length, total: members.length })}
+          </span>
+        </div>
 
-  <!-- Edit member -->
-  <Dialog open={!!editing} onOpenChange={(v) => { if (!v) editing = null }}>
-    <DialogContent class="sm:max-w-md">
-      <DialogHeader>
-        <DialogTitle>{$t('settings.team.editTitle')}</DialogTitle>
-        <DialogDescription>{$t('settings.team.editDescription')}</DialogDescription>
-      </DialogHeader>
-      <form
-        id="edit-member-form"
-        onsubmit={(e) => {
-          e.preventDefault()
-          saveEdit()
-        }}
-      >
-        <div class="grid gap-4 py-1">
-          <div class="grid gap-2">
-            <Label for="edit-member-name">{$t('admin.edit.name')}</Label>
-            <Input id="edit-member-name" bind:value={editName} autocomplete="off" />
-          </div>
-          <div class="grid gap-2">
-            <Label for="edit-member-email">{$t('settings.team.emailLabel')}</Label>
-            <Input id="edit-member-email" bind:value={editEmail} type="email" autocomplete="off" />
-          </div>
-          <div class="grid gap-2">
-            <Label for="edit-member-role">{$t('settings.team.role')}</Label>
+        <TooltipProvider delayDuration={300}>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead scope="col">{$t('settings.team.member')}</TableHead>
+                <TableHead scope="col">{$t('settings.team.role')}</TableHead>
+                <TableHead scope="col">{$t('settings.team.status')}</TableHead>
+                <TableHead scope="col">{$t('settings.team.joined')}</TableHead>
+                <TableHead scope="col" class="w-24 text-right">
+                  <span class="sr-only">{$t('admin.actions')}</span>
+                </TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {#if membersPending}
+                <TableRow>
+                  <TableCell colspan={5} class="text-muted-foreground text-sm">
+                    {$t('settings.team.loading')}
+                  </TableCell>
+                </TableRow>
+              {:else if !filteredMembers.length}
+                <TableRow>
+                  <TableCell colspan={5}>
+                    <EmptyState
+                      icon={UserX}
+                      title={members.length ? $t('admin.noMatchTitle') : $t('settings.team.emptyMembers')}
+                      description={members.length ? $t('admin.noMatchDescription') : undefined}
+                      class="whitespace-normal"
+                    >
+                      {#if activeFilters}
+                        <Button variant="outline" size="sm" class="mt-4" onclick={resetFilters}>
+                          {$t('admin.filters.reset')}
+                        </Button>
+                      {/if}
+                    </EmptyState>
+                  </TableCell>
+                </TableRow>
+              {:else}
+                {#each filteredMembers as m (m.id)}
+                  <TableRow>
+                    <TableCell>
+                      <div class="flex items-center gap-3">
+                        <Avatar class="size-8">
+                          <AvatarFallback class="bg-muted text-muted-foreground text-xs font-medium">
+                            {initials(displayName(m))}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <div class="text-sm font-medium">{displayName(m)}</div>
+                          <div class="text-muted-foreground text-xs">{m.email}</div>
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline">{$t(`admin.roleNames.${m.role}`)}</Badge>
+                    </TableCell>
+                    <TableCell>
+                      <span class="flex items-center gap-1.5 text-xs">
+                        <span class="bg-success size-1.5 rounded-full" aria-hidden="true"></span>
+                        {$t('settings.team.active')}
+                      </span>
+                    </TableCell>
+                    <TableCell class="text-muted-foreground text-xs tabular-nums">
+                      {formatDate(m.createdAt)}
+                    </TableCell>
+                    <TableCell class="text-right">
+                      <div class="flex justify-end gap-1">
+                        <Tooltip>
+                          <TooltipTrigger>
+                            {#snippet child({ props })}
+                              <Button
+                                {...props}
+                                variant="ghost"
+                                size="icon"
+                                class="text-muted-foreground hover:text-foreground size-8"
+                                aria-label={$t('admin.editFor', { name: displayName(m) })}
+                                onclick={() => openEdit(m)}
+                              >
+                                <Pencil class="size-4" />
+                              </Button>
+                            {/snippet}
+                          </TooltipTrigger>
+                          <TooltipContent>{$t('admin.menu.edit')}</TooltipContent>
+                        </Tooltip>
+                        <Tooltip>
+                          <TooltipTrigger>
+                            {#snippet child({ props })}
+                              <Button
+                                {...props}
+                                variant="ghost"
+                                size="icon"
+                                class="text-muted-foreground hover:text-destructive hover:bg-destructive/10 size-8"
+                                aria-label={$t('settings.team.removeFor', { name: displayName(m) })}
+                                onclick={() => (removing = m)}
+                              >
+                                <Trash2 class="size-4" />
+                              </Button>
+                            {/snippet}
+                          </TooltipTrigger>
+                          <TooltipContent>{$t('settings.team.remove')}</TooltipContent>
+                        </Tooltip>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                {/each}
+              {/if}
+            </TableBody>
+          </Table>
+        </TooltipProvider>
+      </Card>
+    {/if}
+
+    {#if canInvite && !invitesForbidden}
+      <Card>
+        <CardHeader>
+          <CardTitle class="text-base">{$t('settings.team.pendingTitle')}</CardTitle>
+          <CardDescription>{$t('settings.team.pendingDescription')}</CardDescription>
+        </CardHeader>
+        <CardContent class="divide-y">
+          {#if invitesFailed}
+            <div class="flex flex-wrap items-center justify-between gap-4 py-3 first:pt-0">
+              <span class="text-muted-foreground text-sm">Couldn't load pending invites.</span>
+              <Button variant="outline" size="sm" onclick={() => void refreshInvites()}>
+                {$t('settings.activity.states.retry')}
+              </Button>
+            </div>
+          {:else if invitesPending}
+            <div class="text-muted-foreground py-3 text-sm first:pt-0">{$t('settings.team.loading')}</div>
+          {:else if !pendingInvites.length}
+            <div class="text-muted-foreground py-3 text-sm first:pt-0">{$t('settings.team.emptyPending')}</div>
+          {:else}
+            {#each pendingInvites as p (p.id)}
+              <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 py-3 first:pt-0 last:pb-0">
+                <div class="min-w-0 space-y-0.5">
+                  <p class="truncate text-sm font-medium">{p.email}</p>
+                  <p class="text-muted-foreground text-xs tabular-nums">
+                    {$t('settings.team.invitedAs', { role: roleName(p.role) })} · {$t('settings.team.expires', { date: formatDate(p.expiresAt) })}
+                  </p>
+                </div>
+                <div class="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={resendingEmail === p.email || revokingId === p.id}
+                    onclick={() => void resendInvite(p)}
+                  >
+                    {#if resendingEmail === p.email}
+                      <Loader2 class="size-4 animate-spin" aria-hidden="true" />
+                    {/if}
+                    {$t('settings.team.resend')}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    class="text-destructive"
+                    disabled={revokingId === p.id || resendingEmail === p.email}
+                    onclick={() => void revokeInvite(p.id)}
+                  >
+                    {#if revokingId === p.id}
+                      <Loader2 class="size-4 animate-spin" aria-hidden="true" />
+                    {/if}
+                    {$t('settings.team.revoke')}
+                  </Button>
+                </div>
+              </div>
+            {/each}
+          {/if}
+          {#if revokeError}
+            <div class="text-destructive flex items-center gap-2 pt-3 text-sm" role="alert">
+              <AlertCircle class="size-4" aria-hidden="true" />
+              {revokeError}
+            </div>
+          {/if}
+        </CardContent>
+      </Card>
+    {:else}
+      <p class="text-muted-foreground text-xs">{$t('settings.team.viewerNote')}</p>
+    {/if}
+
+    <!-- Edit member -->
+    <Dialog open={!!editing} onOpenChange={(v) => { if (!v) editing = null }}>
+      <DialogContent class="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>{$t('settings.team.editTitle')}</DialogTitle>
+          <DialogDescription>{$t('settings.team.editDescription')}</DialogDescription>
+        </DialogHeader>
+        <form
+          id="edit-member-form"
+          onsubmit={(e) => {
+            e.preventDefault()
+            saveEdit()
+          }}
+        >
+          <div class="grid gap-4 py-1">
+            <div class="grid gap-2">
+              <Label for="edit-member-name">{$t('admin.edit.name')}</Label>
+              <Input id="edit-member-name" bind:value={editName} autocomplete="off" />
+            </div>
+            <div class="grid gap-2">
+              <Label for="edit-member-email">{$t('settings.team.emailLabel')}</Label>
+              <Input id="edit-member-email" bind:value={editEmail} type="email" autocomplete="off" />
+            </div>
+            <div class="grid gap-2">
+              <Label for="edit-member-role">{$t('settings.team.role')}</Label>
               <Select bind:value={editRole}>
                 <SelectTrigger id="edit-member-role">
-                  <SelectValue>{editRoleLabel}</SelectValue>
+                  <SelectValue />
                 </SelectTrigger>
-              <SelectContent>
-                {#each ROLES as r (r)}
-                  <SelectItem value={r}>{$t(`admin.roleNames.${r}`)}</SelectItem>
-                {/each}
-              </SelectContent>
-            </Select>
+                <SelectContent>
+                  {#each ROLES as r (r)}
+                    <SelectItem value={r}>{$t(`admin.roleNames.${r}`)}</SelectItem>
+                  {/each}
+                </SelectContent>
+              </Select>
+            </div>
+            {#if editError}
+              <p class="text-destructive text-sm" role="alert">{editError}</p>
+            {/if}
           </div>
-          {#if editError}
-            <p class="text-destructive text-sm" role="alert">{editError}</p>
-          {/if}
-        </div>
-      </form>
-      <DialogFooter>
-        <Button variant="outline" onclick={() => (editing = null)}>{$t('admin.edit.cancel')}</Button>
-        <Button type="submit" form="edit-member-form">{$t('admin.edit.save')}</Button>
-      </DialogFooter>
-    </DialogContent>
-  </Dialog>
+        </form>
+        <DialogFooter>
+          <Button variant="outline" onclick={() => (editing = null)}>{$t('admin.edit.cancel')}</Button>
+          <Button type="submit" form="edit-member-form">{$t('admin.edit.save')}</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
 
-  <!-- Remove confirmation -->
-  <Dialog open={!!removing} onOpenChange={(v) => { if (!v) removing = null }}>
-    <DialogContent class="sm:max-w-md">
-      <DialogHeader>
-        <DialogTitle>{$t('settings.team.removeTitle', { name: removing ? displayName(removing) : '' })}</DialogTitle>
-        <DialogDescription>{$t('settings.team.removeDescription')}</DialogDescription>
-      </DialogHeader>
-      <DialogFooter>
-        <Button variant="outline" onclick={() => (removing = null)}>{$t('admin.edit.cancel')}</Button>
-        <Button variant="destructive" onclick={confirmRemove}>
-          <Trash2 class="size-4" aria-hidden="true" />
-          {$t('settings.team.remove')}
-        </Button>
-      </DialogFooter>
-    </DialogContent>
-  </Dialog>
+    <!-- Remove confirmation -->
+    <Dialog open={!!removing} onOpenChange={(v) => { if (!v) removing = null }}>
+      <DialogContent class="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>{$t('settings.team.removeTitle', { name: removing ? displayName(removing) : '' })}</DialogTitle>
+          <DialogDescription>{$t('settings.team.removeDescription')}</DialogDescription>
+        </DialogHeader>
+        <DialogFooter>
+          <Button variant="outline" onclick={() => (removing = null)}>{$t('admin.edit.cancel')}</Button>
+          <Button variant="destructive" onclick={confirmRemove}>
+            <Trash2 class="size-4" aria-hidden="true" />
+            {$t('settings.team.remove')}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  </PageBody>
 </Page>

@@ -136,16 +136,16 @@
       "aria": "Customize theme",
       "title": "Customize",
       "hint": "Preview the app with your preferred tokens.",
-      "saved": "saved automatically",
-      "primary": "Primary colour",
-      "radius": "Corner radius",
-      "mode": "Colour mode",
+      "saved": "saved in your browser",
+      "primary": "Primary color",
+      "radius": "Radius",
+      "mode": "Color mode",
       "modes": {
         "light": "Light",
         "dark": "Dark",
         "system": "System"
       },
-      "reset": "Reset to defaults",
+      "reset": "Reset",
       "names": {
         "default": "Default",
         "blue": "Blue",
@@ -229,7 +229,6 @@
       "colLastUsed": "Last used",
       "colActions": "Actions",
       "revoked": "Revoked",
-      "sample": "Sample",
       "never": "Never",
       "neverUsed": "Never used",
       "revoke": "Revoke",
@@ -283,7 +282,8 @@
       "removed": "{name} removed",
       "editTitle": "Edit member",
       "editDescription": "Update their name, email or role.",
-      "editInvalid": "Add a name and a valid email."
+      "editInvalid": "Add a name and a valid email.",
+      "invitedAs": "Invited as {role}"
     }
   },
   "admin": {
@@ -388,6 +388,89 @@
     "loading": "Verifying invite…",
     "acceptFailed": "Could not accept the invite. Please try again."
   },
+  "uiKit": {
+    "description": "Find the sanctioned component for a job, see where the app already uses it, and copy the install command.",
+    "foundations": {
+      "title": "Foundations",
+      "description": "Tokens and rules every page follows. Swatches read the current theme.",
+      "color": "Color",
+      "colorRule": "Chrome uses neutrals and primary. Status uses success, warning, info and destructive. Categories and chart series use chart-1 to chart-5. No raw palette classes, hex values or decorative gradients.",
+      "neutrals": "Neutrals",
+      "primary": "Primary",
+      "status": "Status",
+      "chart": "Chart series",
+      "type": "Type roles",
+      "spacing": "Spacing",
+      "icons": "Icon sizes",
+      "roles": {
+        "h1": "Page title",
+        "cardTitle": "Card title",
+        "body": "Body",
+        "meta": "Meta / helper",
+        "eyebrow": "Eyebrow",
+        "metric": "Metric"
+      },
+      "gaps": {
+        "inline": "Icon + text",
+        "field": "Field group",
+        "card": "Inside cards",
+        "section": "Between sections"
+      },
+      "iconUses": {
+        "xs": "Next to text-xs",
+        "sm": "Next to text-sm, buttons",
+        "box": "Inside IconBox",
+        "empty": "Empty-state art"
+      }
+    },
+    "toolbar": {
+      "searchLabel": "Search components",
+      "searchPlaceholder": "Search by name or use case, e.g. date range",
+      "category": "Category",
+      "status": "Status",
+      "results": "{count, plural, =0 {No components} one {# component} other {# components}}"
+    },
+    "category": {
+      "all": "All categories",
+      "forms": "Forms",
+      "actions": "Actions",
+      "overlays": "Overlays",
+      "navigation": "Navigation",
+      "feedback": "Feedback",
+      "dataDisplay": "Data display",
+      "layout": "Layout",
+      "charts": "Charts",
+      "utility": "Utility",
+      "blocks": "Blocks"
+    },
+    "status": {
+      "all": "All",
+      "installed": "Installed",
+      "available": "Available",
+      "demoOnly": "Demo only"
+    },
+    "card": {
+      "usedIn": "Used in",
+      "notUsed": "No page uses it yet.",
+      "install": "Install",
+      "copy": "Copy install command",
+      "copied": "Copied",
+      "docs": "Docs",
+      "localBlock": "Local block, not in the registry.",
+      "source": "Source",
+      "demo": "Demo",
+      "loadingDemo": "Loading demo…",
+      "layout": "{name} layout",
+      "appShell": "App shell",
+      "errorPage": "Error page",
+      "home": "Home"
+    },
+    "empty": {
+      "title": "No components match",
+      "description": "Try another word, or clear the filters.",
+      "clear": "Clear filters"
+    }
+  },
   "dashboard": {
     "locations": {
       "title": "Locations",
@@ -490,7 +573,7 @@
         },
         "charts": {
           "title": "Trends and breakdowns",
-          "description": "Revenue, funnel and quota charts follow the range tabs above — switch ranges to recompute."
+          "description": "Revenue, active alerts and API quota sit up front. Revenue follows the range tabs above — switch ranges to recompute."
         },
         "table": {
           "title": "Dig into the rows",
@@ -563,7 +646,9 @@
       "search": "Search",
       "clearFilter": "Clear filter",
       "boardView": "Board view",
-      "listView": "List view"
+      "listView": "List view",
+      "overdue": "Overdue",
+      "dueSoon": "Due soon"
     },
     "messages": {
       "emptySearchTitle": "No messages match your search",
@@ -575,6 +660,22 @@
       "copied": "Invoice ID copied",
       "downloadAria": "Download {id}",
       "copyAria": "Copy {id}"
+    }
+  },
+  "projects": {
+    "empty": {
+      "title": "No projects yet",
+      "description": "Create your first project to group related work, members and assets.",
+      "action": "New project"
+    }
+  },
+  "feedback": {
+    "attachments": {
+      "label": "Screenshots (optional)",
+      "hint": "Up to 3 images, 5 MB each. PNG, JPG, GIF or WebP.",
+      "tooMany": "You can attach up to 3 images.",
+      "tooBig": "{name} is larger than 5 MB.",
+      "badType": "{name} is not an image."
     }
   }
 }

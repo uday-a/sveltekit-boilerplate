@@ -18,6 +18,13 @@ import { logger } from './logger'
 //   import { sendEmail, welcomeEmail } from '$lib/server/mailer'
 //   await sendEmail(welcomeEmail({ name: 'Ada', email: 'ada@x.com', siteUrl: env.PUBLIC_SITE_URL }))
 
+export interface EmailAttachment {
+  filename: string
+  // Base64-encoded file bytes (Resend `content` shape).
+  content: string
+  contentType?: string
+}
+
 export interface Email {
   to: string | string[]
   subject: string
@@ -26,6 +33,7 @@ export interface Email {
   replyTo?: string
   // Tags help filtering in the Resend dashboard.
   tags?: { name: string, value: string }[]
+  attachments?: EmailAttachment[]
 }
 
 // Loose type so unused-when-off imports stay out of the bundle.
@@ -50,11 +58,14 @@ export async function sendEmail(email: Email): Promise<{ id: string | null }> {
 
   if (!hasResend) {
     // Dev fallback: print to consola so devs can verify flows fire.
+    const attachmentNote = email.attachments?.length
+      ? `\nAttachments (${email.attachments.length}): ${email.attachments.map(a => a.filename).join(', ')} (not sent — dry run)`
+      : ''
     consola.box(
       '[mailer DRY RUN — set RESEND_API_KEY to send]\n'
       + `From:    ${from}\n`
       + `To:      ${Array.isArray(email.to) ? email.to.join(', ') : email.to}\n`
-      + `Subject: ${email.subject}\n\n`
+      + `Subject: ${email.subject}${attachmentNote}\n\n`
       + `${(email.text ?? email.html).slice(0, 200)}…`,
     )
     return { id: null }
@@ -71,6 +82,15 @@ export async function sendEmail(email: Email): Promise<{ id: string | null }> {
     ...(email.text ? { text: email.text } : {}),
     ...(email.replyTo ? { reply_to: email.replyTo } : {}),
     ...(email.tags ? { tags: email.tags } : {}),
+    ...(email.attachments?.length
+      ? {
+        attachments: email.attachments.map(a => ({
+          filename: a.filename,
+          content: a.content,
+          ...(a.contentType ? { contentType: a.contentType } : {}),
+        })),
+      }
+      : {}),
   })
 
   if (res.error) {
@@ -191,13 +211,19 @@ export function feedbackEmail(args: {
   category: string
   subject: string
   message: string
+  attachments?: EmailAttachment[]
 }): Email {
-  const text = `New feedback from ${args.reporter.name} (${args.reporter.login}, ${args.reporter.email})\n\nCategory: ${args.category}\nSubject: ${args.subject}\n\n${args.message}`
+  const attachmentNames = args.attachments?.map(a => a.filename) ?? []
+  const attachmentLine = attachmentNames.length
+    ? `\n\nAttachments (${attachmentNames.length}): ${attachmentNames.join(', ')}`
+    : ''
+  const text = `New feedback from ${args.reporter.name} (${args.reporter.login}, ${args.reporter.email})\n\nCategory: ${args.category}\nSubject: ${args.subject}\n\n${args.message}${attachmentLine}`
   const html = shell('Feedback', `
     <div style="font-size:12px;font-weight:600;letter-spacing:0.06em;color:#7c3aed;text-transform:uppercase;margin-bottom:8px;">Feedback · ${args.category}</div>
     <h1 style="margin:0 0 12px;font-size:20px;font-weight:600;line-height:1.3;">${args.subject}</h1>
     <div style="margin:0 0 24px;font-size:13px;color:#6b7280;">From ${args.reporter.name} (${args.reporter.login}) · <a href="mailto:${args.reporter.email}" style="color:#6b7280;">${args.reporter.email}</a></div>
     <div style="font-size:15px;line-height:1.6;color:#0a0a0a;white-space:pre-wrap;">${escapeHtml(args.message)}</div>
+    ${attachmentNames.length ? `<div style="margin:16px 0 0;font-size:13px;color:#6b7280;">Attachments (${attachmentNames.length}): ${attachmentNames.map(escapeHtml).join(', ')}</div>` : ''}
   `)
 
   return {
@@ -210,6 +236,7 @@ export function feedbackEmail(args: {
       { name: 'kind', value: 'feedback' },
       { name: 'category', value: args.category },
     ],
+    ...(attachmentNames.length ? { attachments: args.attachments } : {}),
   }
 }
 

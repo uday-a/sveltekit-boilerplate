@@ -136,16 +136,16 @@
       "aria": "Personalizar tema",
       "title": "Personalizar",
       "hint": "Previsualiza la app con tus tokens preferidos.",
-      "saved": "guardado automáticamente",
+      "saved": "guardado en tu navegador",
       "primary": "Color principal",
-      "radius": "Radio de esquina",
+      "radius": "Radio",
       "mode": "Modo de color",
       "modes": {
         "light": "Claro",
         "dark": "Oscuro",
         "system": "Sistema"
       },
-      "reset": "Restablecer valores",
+      "reset": "Restablecer",
       "names": {
         "default": "Predeterminado",
         "blue": "Azul",
@@ -229,7 +229,6 @@
       "colLastUsed": "Último uso",
       "colActions": "Acciones",
       "revoked": "Revocada",
-      "sample": "Muestra",
       "never": "Nunca",
       "neverUsed": "Sin usar",
       "revoke": "Revocar",
@@ -283,7 +282,8 @@
       "removed": "{name} quitado",
       "editTitle": "Editar miembro",
       "editDescription": "Actualiza su nombre, correo o rol.",
-      "editInvalid": "Añade un nombre y un correo válido."
+      "editInvalid": "Añade un nombre y un correo válido.",
+      "invitedAs": "Invitado como {role}"
     }
   },
   "admin": {
@@ -388,6 +388,89 @@
     "loading": "Verificando invitación…",
     "acceptFailed": "No se pudo aceptar la invitación. Inténtalo de nuevo."
   },
+  "uiKit": {
+    "description": "Encuentra el componente adecuado para cada tarea, mira dónde lo usa ya la app y copia el comando de instalación.",
+    "foundations": {
+      "title": "Fundamentos",
+      "description": "Tokens y reglas que sigue cada página. Las muestras leen el tema actual.",
+      "color": "Color",
+      "colorRule": "La interfaz usa neutros y primario. Los estados usan success, warning, info y destructive. Las categorías y series de gráficos usan chart-1 a chart-5. Nada de clases de paleta directas, valores hex ni degradados decorativos.",
+      "neutrals": "Neutros",
+      "primary": "Primario",
+      "status": "Estado",
+      "chart": "Series de gráficos",
+      "type": "Roles tipográficos",
+      "spacing": "Espaciado",
+      "icons": "Tamaños de icono",
+      "roles": {
+        "h1": "Título de página",
+        "cardTitle": "Título de tarjeta",
+        "body": "Cuerpo",
+        "meta": "Meta / ayuda",
+        "eyebrow": "Antetítulo",
+        "metric": "Métrica"
+      },
+      "gaps": {
+        "inline": "Icono + texto",
+        "field": "Grupo de campos",
+        "card": "Dentro de tarjetas",
+        "section": "Entre secciones"
+      },
+      "iconUses": {
+        "xs": "Junto a text-xs",
+        "sm": "Junto a text-sm, botones",
+        "box": "Dentro de IconBox",
+        "empty": "Ilustración de estado vacío"
+      }
+    },
+    "toolbar": {
+      "searchLabel": "Buscar componentes",
+      "searchPlaceholder": "Busca por nombre o caso de uso, p. ej. rango de fechas",
+      "category": "Categoría",
+      "status": "Estado",
+      "results": "{count, plural, =0 {Ningún componente} one {# componente} other {# componentes}}"
+    },
+    "category": {
+      "all": "Todas las categorías",
+      "forms": "Formularios",
+      "actions": "Acciones",
+      "overlays": "Superposiciones",
+      "navigation": "Navegación",
+      "feedback": "Estado y avisos",
+      "dataDisplay": "Visualización de datos",
+      "layout": "Diseño",
+      "charts": "Gráficos",
+      "utility": "Utilidades",
+      "blocks": "Bloques"
+    },
+    "status": {
+      "all": "Todos",
+      "installed": "Instalado",
+      "available": "Disponible",
+      "demoOnly": "Solo demo"
+    },
+    "card": {
+      "usedIn": "Se usa en",
+      "notUsed": "Ninguna página lo usa todavía.",
+      "install": "Instalar",
+      "copy": "Copiar comando de instalación",
+      "copied": "Copiado",
+      "docs": "Documentación",
+      "localBlock": "Bloque local, no está en el registro.",
+      "source": "Código",
+      "demo": "Demo",
+      "loadingDemo": "Cargando demo…",
+      "layout": "Diseño {name}",
+      "appShell": "Estructura de la app",
+      "errorPage": "Página de error",
+      "home": "Inicio"
+    },
+    "empty": {
+      "title": "Ningún componente coincide",
+      "description": "Prueba otra palabra o borra los filtros.",
+      "clear": "Borrar filtros"
+    }
+  },
   "dashboard": {
     "locations": {
       "title": "Ubicaciones",
@@ -490,7 +573,7 @@
         },
         "charts": {
           "title": "Tendencias y desgloses",
-          "description": "Los gráficos de ingresos, embudo y cuota siguen las pestañas de rango — cámbialas para recalcular."
+          "description": "Ingresos, alertas activas y cuota de API, a primera vista. Los ingresos siguen las pestañas de rango — cámbialas para recalcular."
         },
         "table": {
           "title": "Explora las filas",
@@ -563,7 +646,9 @@
       "search": "Búsqueda",
       "clearFilter": "Borrar filtro",
       "boardView": "Vista de tablero",
-      "listView": "Vista de lista"
+      "listView": "Vista de lista",
+      "overdue": "Vencida",
+      "dueSoon": "Vence pronto"
     },
     "messages": {
       "emptySearchTitle": "Ningún mensaje coincide con tu búsqueda",
@@ -575,6 +660,22 @@
       "copied": "ID de factura copiado",
       "downloadAria": "Descargar {id}",
       "copyAria": "Copiar {id}"
+    }
+  },
+  "projects": {
+    "empty": {
+      "title": "Aún no hay proyectos",
+      "description": "Crea tu primer proyecto para agrupar trabajo, miembros y recursos.",
+      "action": "Nuevo proyecto"
+    }
+  },
+  "feedback": {
+    "attachments": {
+      "label": "Capturas (opcional)",
+      "hint": "Hasta 3 imágenes, 5 MB cada una. PNG, JPG, GIF o WebP.",
+      "tooMany": "Puedes adjuntar hasta 3 imágenes.",
+      "tooBig": "{name} supera los 5 MB.",
+      "badType": "{name} no es una imagen."
     }
   }
 }

@@ -2,7 +2,6 @@ import type { RequestHandler } from './$types'
 import { eq } from 'drizzle-orm'
 import { schema, useDb } from '$lib/server/db/index'
 import { recordAudit } from '$lib/server/audit'
-import { isSampleKeyId } from '$lib/server/api-keys'
 import { requireAuth } from '$lib/server/guards'
 import { logger } from '$lib/server/logger'
 import { apiError, jsonError, jsonOk } from '$lib/server/response'
@@ -23,10 +22,7 @@ export const DELETE: RequestHandler = async (event) => {
       throw apiError('VALIDATION_FAILED', 'Invalid API key id', { field: 'id' })
     }
 
-    // Demo sample rows are fake successes (nothing persisted to revoke).
-    if (session.demo === true && isSampleKeyId(id)) return jsonOk({ revoked: id })
-
-    // Demo sessions own no real keys, so every other id is a 404.
+    // Demo sessions own no keys, so every id is a 404 by construction.
     if (session.demo === true) {
       throw apiError('NOT_FOUND', `API key ${id} not found`)
     }

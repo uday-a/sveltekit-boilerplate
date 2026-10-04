@@ -4,7 +4,12 @@
   import { Label } from '$lib/components/ui/label'
   import { Separator } from '$lib/components/ui/separator'
   import { Switch } from '$lib/components/ui/switch'
-  import { Page, PageHeader, PageHeaderHeading } from '$lib/components/ui/page'
+  import { Page, PageBody, PageHeader, PageHeaderHeading } from '$lib/components/ui/page'
+  import { page } from '$app/state'
+  import { routeLabel } from '$lib/breadcrumb-labels'
+  import { t } from '$lib/i18n'
+
+  const title = $derived(routeLabel(page.url.pathname, $t))
 
   interface Channel {
     email: boolean
@@ -37,46 +42,48 @@
 </script>
 
 <svelte:head>
-  <title>Notifications · Settings | UIPKGE</title>
+  <title>{title} | UIPKGE</title>
 </svelte:head>
 
-<Page class="max-w-3xl">
+<Page>
   <PageHeader>
-    <PageHeaderHeading title="Notifications" description="Pick which channels receive which events." />
+    <PageHeaderHeading {title} description="Pick which channels receive which events." />
   </PageHeader>
 
-  <Card>
-    <CardHeader>
-      <CardTitle class="text-base">Delivery preferences</CardTitle>
-      <CardDescription>Critical security alerts always send to email and can’t be disabled.</CardDescription>
-    </CardHeader>
-    <CardContent>
-      <div class="grid grid-cols-[1fr_auto_auto] items-end gap-x-4 gap-y-1 pb-2 text-xs font-medium text-muted-foreground">
-        <span>Event</span>
-        <span class="px-1 text-center">Email</span>
-        <span class="px-1 text-center">In-app</span>
-      </div>
-      <Separator />
-      {#each rows as r, i (r.key)}
-        <div>
-          <div class="grid grid-cols-[1fr_auto_auto] items-center gap-x-4 py-3">
-            <div class="space-y-0.5">
-              <Label for={`pref-${r.key}-email`} class="text-sm font-medium">{r.label}</Label>
-              <p class="text-muted-foreground text-xs">{r.description}</p>
-            </div>
-            <Switch id={`pref-${r.key}-email`} bind:checked={prefs[r.key]!.email} />
-            <Switch id={`pref-${r.key}-inapp`} bind:checked={prefs[r.key]!.inApp} />
-          </div>
-          {#if i < rows.length - 1}
-            <Separator />
-          {/if}
+  <PageBody class="max-w-3xl space-y-4">
+    <Card>
+      <CardHeader>
+        <CardTitle class="text-base">Delivery preferences</CardTitle>
+        <CardDescription>Critical security alerts always send to email and can’t be disabled.</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div class="grid grid-cols-[1fr_auto_auto] items-end gap-x-4 gap-y-1 pb-2 text-xs font-medium text-muted-foreground">
+          <span>Event</span>
+          <span class="px-1 text-center">Email</span>
+          <span class="px-1 text-center">In-app</span>
         </div>
-      {/each}
-    </CardContent>
-  </Card>
+        <Separator />
+        {#each rows as r, i (r.key)}
+          <div>
+            <div class="grid grid-cols-[1fr_auto_auto] items-center gap-x-4 py-3">
+              <div class="space-y-0.5">
+                <Label for={`pref-${r.key}-email`} class="text-sm font-medium">{r.label}</Label>
+                <p class="text-muted-foreground text-xs">{r.description}</p>
+              </div>
+              <Switch id={`pref-${r.key}-email`} bind:checked={prefs[r.key]!.email} />
+              <Switch id={`pref-${r.key}-inapp`} bind:checked={prefs[r.key]!.inApp} />
+            </div>
+            {#if i < rows.length - 1}
+              <Separator />
+            {/if}
+          </div>
+        {/each}
+      </CardContent>
+    </Card>
 
-  <div class="flex justify-end gap-2">
-    <Button variant="outline">Reset</Button>
-    <Button>Save preferences</Button>
-  </div>
+    <div class="flex items-center justify-end gap-2">
+      <Button variant="outline">Reset</Button>
+      <Button>Save preferences</Button>
+    </div>
+  </PageBody>
 </Page>

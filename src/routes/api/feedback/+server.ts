@@ -2,7 +2,7 @@ import type { RequestHandler } from './$types'
 import { z } from 'zod'
 import { env } from '$lib/server/env'
 import { requireAuth } from '$lib/server/guards'
-import { feedbackEmail, sendEmail } from '$lib/server/mailer'
+import { feedbackEmail, sendEmail, type EmailAttachment } from '$lib/server/mailer'
 import { apiError, jsonError, jsonOk } from '$lib/server/response'
 
 const FeedbackInput = z.object({
@@ -10,6 +10,11 @@ const FeedbackInput = z.object({
   subject: z.string().trim().min(3, 'Subject must be at least 3 characters').max(120, 'Subject must be 120 characters or fewer'),
   message: z.string().trim().min(10, 'Message must be at least 10 characters').max(4000, 'Message must be 4000 characters or fewer'),
 })
+
+// Attachments are screenshots, so images only. Client validates first;
+// the server re-checks every file because client checks are bypassable.
+const MAX_FILES = 3
+const MAX_FILE_BYTES = 5 * 1024 * 1024
 
 export const POST: RequestHandler = async (event) => {
   try {
@@ -21,7 +26,35 @@ export const POST: RequestHandler = async (event) => {
       throw apiError('FORBIDDEN', 'Feedback is disabled in demo mode.')
     }
 
-    const parsed = FeedbackInput.safeParse(await event.request.json())
+    let input: Record<string, unknown> = {}
+    let attachments: EmailAttachment[] = []
+
+    const contentType = event.request.headers.get('content-type') ?? ''
+    if (contentType.includes('multipart/form-data')) {
+      const form = await event.request.formData().catch(() => null)
+      if (!form) throw apiError('VALIDATION_FAILED', 'Invalid feedback payload')
+      input = { category: form.get('category'), subject: form.get('subject'), message: form.get('message') }
+
+      const files = form.getAll('files').filter((f): f is File => f instanceof File)
+      if (files.length > MAX_FILES) {
+        throw apiError('VALIDATION_FAILED', `You can attach up to ${MAX_FILES} images`)
+      }
+      attachments = await Promise.all(files.map(async (f) => {
+        const filename = f.name || 'attachment'
+        if (!f.type.startsWith('image/')) throw apiError('VALIDATION_FAILED', `${filename} is not an image`)
+        if (f.size > MAX_FILE_BYTES) throw apiError('VALIDATION_FAILED', `${filename} is larger than 5 MB`)
+        return {
+          filename,
+          content: Buffer.from(await f.arrayBuffer()).toString('base64'),
+          contentType: f.type,
+        }
+      }))
+    }
+    else {
+      input = (await event.request.json().catch(() => ({}))) ?? {}
+    }
+
+    const parsed = FeedbackInput.safeParse(input)
     if (!parsed.success) {
       throw apiError('VALIDATION_FAILED', 'Invalid feedback payload', {
         issues: parsed.error.issues,
@@ -43,6 +76,7 @@ export const POST: RequestHandler = async (event) => {
       category: parsed.data.category,
       subject: parsed.data.subject,
       message: parsed.data.message,
+      ...(attachments.length ? { attachments } : {}),
     }))
 
     return jsonOk({ delivered: Boolean(id) || !env.RESEND_API_KEY, id })

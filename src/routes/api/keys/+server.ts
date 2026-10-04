@@ -3,7 +3,7 @@ import { desc, eq } from 'drizzle-orm'
 import { z } from 'zod'
 import { schema, useDb } from '$lib/server/db/index'
 import { recordAudit } from '$lib/server/audit'
-import { demoSampleKeys, mintApiKey } from '$lib/server/api-keys'
+import { mintApiKey } from '$lib/server/api-keys'
 import { requireRateLimit } from '$lib/server/rate-limit'
 import { requireAuth } from '$lib/server/guards'
 import { logger } from '$lib/server/logger'
@@ -23,9 +23,8 @@ export const GET: RequestHandler = async (event) => {
   try {
     const session = await requireAuth(event)
 
-    // Demo has no DB rows — surface clearly-flagged sample rows so the
-    // page shows existing data. Real users always read their own rows.
-    if (session.demo === true) return jsonOk({ keys: demoSampleKeys() })
+    // Demo session has no DB rows; surface a deterministic empty list.
+    if (session.demo === true) return jsonOk({ keys: [] })
 
     const db = useDb()
     // Explicit column list — keyHash is selected nowhere, so it can

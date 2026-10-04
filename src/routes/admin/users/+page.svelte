@@ -15,10 +15,14 @@
   import { DateFormatter, getLocalTimeZone } from '@internationalized/date'
   import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '$lib/components/ui/tooltip'
   import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '$lib/components/ui/dialog'
-  import { Page, PageHeader, PageHeaderHeading } from '$lib/components/ui/page'
+  import { Page, PageBody, PageHeader, PageHeaderHeading } from '$lib/components/ui/page'
+  import { page } from '$app/state'
+  import { routeLabel } from '$lib/breadcrumb-labels'
   import { EmptyState } from '$lib/components/ui/empty-state'
   import { apiFetch, type ApiResponse } from '$lib/api'
   import { locale, t } from '$lib/i18n'
+
+  const title = $derived(routeLabel(page.url.pathname, $t))
 
   // Admin users page. Port of Nuxt `admin/users.vue`: live list from
   // /api/admin/users (requireRole('admin') is the real gate), search +
@@ -198,11 +202,6 @@
 
   const initials = (n: string) => n.split(' ').map(p => p[0]).join('').slice(0, 2).toUpperCase()
 
-  // SelectValue only resolves labels from mounted items (content mounts on
-  // open), so controlled selects render their label as explicit children.
-  const roleName = (r: string) => $t(`admin.roleNames.${r}`)
-  const filterLabel = $derived(roleFilter === 'all' ? $t('admin.filters.allRoles') : roleName(roleFilter))
-  const formRoleLabel = $derived(roleName(formRole))
 
   function formatDate(d: string | Date) {
     return new Date(d).toLocaleDateString($locale ?? 'en', { month: 'short', day: 'numeric', year: 'numeric' })
@@ -210,224 +209,226 @@
 </script>
 
 <svelte:head>
-  <title>{$t('nav.items.users')} | UIPKGE</title>
+  <title>{title} | UIPKGE</title>
 </svelte:head>
 
 <Page>
   <PageHeader>
-    <PageHeaderHeading title={$t('admin.title')} {description} />
+    <PageHeaderHeading {title} {description} />
   </PageHeader>
 
-  {#if forbidden}
-    <Card>
-      <EmptyState
-        icon={ShieldAlert}
-        title={$t('admin.adminsOnly')}
-        description={`${$t('admin.forbidden')} ${$t('admin.forbiddenRole', { role: currentRole })} ${$t('admin.forbiddenHelp')}`}
-        role="alert"
-        class="p-4"
-      />
-    </Card>
-  {:else if failed}
-    <Card>
-      <EmptyState icon={CloudOff} title={$t('admin.loadFailedTitle')} description={$t('admin.loadFailed')} role="alert" class="p-4">
-        <Button variant="outline" size="sm" class="mt-4" onclick={() => void refresh()}>
-          {$t('settings.activity.states.retry')}
-        </Button>
-      </EmptyState>
-    </Card>
-  {:else}
-    <Card>
-      <!-- Filters -->
-      <div class="flex flex-col gap-2 border-b p-4 sm:flex-row sm:items-center">
-        <div class="w-full sm:w-64">
-          <Input
-            bind:value={search}
-            size="small"
-            prefixIcon={Search}
-            allowClear
-            placeholder={$t('admin.filters.search')}
-            aria-label={$t('admin.filters.search')}
-          />
-        </div>
-        <Select bind:value={roleFilter}>
-          <SelectTrigger size="sm" class="sm:w-36" aria-label={$t('admin.filters.role')}>
-            <SelectValue>{filterLabel}</SelectValue>
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">{$t('admin.filters.allRoles')}</SelectItem>
-            {#each ROLES as r (r)}
-              <SelectItem value={r}>{$t(`admin.roleNames.${r}`)}</SelectItem>
-            {/each}
-          </SelectContent>
-        </Select>
-        <Popover bind:open={rangeOpen}>
-          <PopoverTrigger>
-            {#snippet child({ props })}
-              <Button
-                {...props}
-                variant="outline"
-                size="sm"
-                class={['justify-start gap-2 font-normal', !joinedRange?.start && 'text-muted-foreground']}
-              >
-                <CalendarIcon class="size-4" aria-hidden="true" />
-                {rangeLabel}
-              </Button>
-            {/snippet}
-          </PopoverTrigger>
-          <PopoverContent align="start" class="w-auto p-0">
-            <RangeCalendar bind:value={joinedRange} />
-          </PopoverContent>
-        </Popover>
-        {#if activeFilters}
-          <Button variant="ghost" size="sm" class="text-muted-foreground gap-1.5" onclick={resetFilters}>
-            <RotateCcw class="size-3.5" aria-hidden="true" />
-            {$t('admin.filters.reset')}
+  <PageBody>
+    {#if forbidden}
+      <Card>
+        <EmptyState
+          icon={ShieldAlert}
+          title={$t('admin.adminsOnly')}
+          description={`${$t('admin.forbidden')} ${$t('admin.forbiddenRole', { role: currentRole })} ${$t('admin.forbiddenHelp')}`}
+          role="alert"
+          class="p-4"
+        />
+      </Card>
+    {:else if failed}
+      <Card>
+        <EmptyState icon={CloudOff} title={$t('admin.loadFailedTitle')} description={$t('admin.loadFailed')} role="alert" class="p-4">
+          <Button variant="outline" size="sm" class="mt-4" onclick={() => void refresh()}>
+            {$t('settings.activity.states.retry')}
           </Button>
-        {/if}
-        <span class="text-muted-foreground text-xs whitespace-nowrap tabular-nums sm:ml-auto">
-          {$t('admin.filters.showing', { shown: filtered.length, total: users.length })}
-        </span>
-      </div>
+        </EmptyState>
+      </Card>
+    {:else}
+      <Card>
+        <!-- Filters -->
+        <div class="flex flex-col gap-2 border-b p-4 sm:flex-row sm:items-center">
+          <div class="w-full sm:w-64">
+            <Input
+              bind:value={search}
+              size="small"
+              prefixIcon={Search}
+              allowClear
+              placeholder={$t('admin.filters.search')}
+              aria-label={$t('admin.filters.search')}
+            />
+          </div>
+          <Select bind:value={roleFilter}>
+            <SelectTrigger size="sm" class="sm:w-36" aria-label={$t('admin.filters.role')}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">{$t('admin.filters.allRoles')}</SelectItem>
+              {#each ROLES as r (r)}
+                <SelectItem value={r}>{$t(`admin.roleNames.${r}`)}</SelectItem>
+              {/each}
+            </SelectContent>
+          </Select>
+          <Popover bind:open={rangeOpen}>
+            <PopoverTrigger>
+              {#snippet child({ props })}
+                <Button
+                  {...props}
+                  variant="outline"
+                  size="sm"
+                  class={['justify-start gap-2 font-normal', !joinedRange?.start && 'text-muted-foreground']}
+                >
+                  <CalendarIcon class="size-4" aria-hidden="true" />
+                  {rangeLabel}
+                </Button>
+              {/snippet}
+            </PopoverTrigger>
+            <PopoverContent align="start" class="w-auto p-0">
+              <RangeCalendar bind:value={joinedRange} />
+            </PopoverContent>
+          </Popover>
+          {#if activeFilters}
+            <Button variant="ghost" size="sm" class="text-muted-foreground gap-1.5" onclick={resetFilters}>
+              <RotateCcw class="size-3.5" aria-hidden="true" />
+              {$t('admin.filters.reset')}
+            </Button>
+          {/if}
+          <span class="text-muted-foreground text-xs whitespace-nowrap tabular-nums sm:ml-auto">
+            {$t('admin.filters.showing', { shown: filtered.length, total: users.length })}
+          </span>
+        </div>
 
-      <TooltipProvider delayDuration={300}>
-        <Table>
-          <!-- WHY (Rule64): sticky header matches the data table. -->
-          <TableHeader class="bg-background sticky top-0 z-10">
-            <TableRow>
-              <TableHead scope="col" aria-sort={ariaSort('name')}>
-                <button
-                  type="button"
-                  class="hover:text-foreground inline-flex items-center gap-1 rounded-sm font-medium focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-                  onclick={() => toggleSort('name')}
-                >
-                  {$t('admin.user')}<ArrowUpDown
-                    class={['size-3', sortKey === 'name' ? 'text-foreground' : 'text-muted-foreground']}
-                    aria-hidden="true"
-                  />
-                </button>
-              </TableHead>
-              <TableHead scope="col" aria-sort={ariaSort('role')}>
-                <button
-                  type="button"
-                  class="hover:text-foreground inline-flex items-center gap-1 rounded-sm font-medium focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-                  onclick={() => toggleSort('role')}
-                >
-                  {$t('admin.role')}<ArrowUpDown
-                    class={['size-3', sortKey === 'role' ? 'text-foreground' : 'text-muted-foreground']}
-                    aria-hidden="true"
-                  />
-                </button>
-              </TableHead>
-              <TableHead scope="col" aria-sort={ariaSort('joined')}>
-                <button
-                  type="button"
-                  class="hover:text-foreground inline-flex items-center gap-1 rounded-sm font-medium focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-                  onclick={() => toggleSort('joined')}
-                >
-                  {$t('admin.joined')}<ArrowUpDown
-                    class={['size-3', sortKey === 'joined' ? 'text-foreground' : 'text-muted-foreground']}
-                    aria-hidden="true"
-                  />
-                </button>
-              </TableHead>
-              <TableHead scope="col" class="w-24 text-right">
-                <span class="sr-only">{$t('admin.actions')}</span>
-              </TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {#if pending}
+        <TooltipProvider delayDuration={300}>
+          <Table>
+            <!-- WHY (Rule64): sticky header matches the data table. -->
+            <TableHeader class="bg-background sticky top-0 z-10">
               <TableRow>
-                <TableCell colspan={4} class="text-muted-foreground text-sm">
-                  {$t('admin.loading')}
-                </TableCell>
-              </TableRow>
-            {:else if !filtered.length}
-              <TableRow>
-                <TableCell colspan={4}>
-                  <EmptyState
-                    icon={UserX}
-                    title={users.length ? $t('admin.noMatchTitle') : $t('admin.empty')}
-                    description={users.length ? $t('admin.noMatchDescription') : undefined}
-                    class="whitespace-normal"
+                <TableHead scope="col" aria-sort={ariaSort('name')}>
+                  <button
+                    type="button"
+                    class="hover:text-foreground inline-flex items-center gap-1 rounded-sm font-medium focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                    onclick={() => toggleSort('name')}
                   >
-                    {#if activeFilters}
-                      <Button variant="outline" size="sm" class="mt-4" onclick={resetFilters}>
-                        {$t('admin.filters.reset')}
-                      </Button>
-                    {/if}
-                  </EmptyState>
-                </TableCell>
+                    {$t('admin.user')}<ArrowUpDown
+                      class={['size-3', sortKey === 'name' ? 'text-foreground' : 'text-muted-foreground']}
+                      aria-hidden="true"
+                    />
+                  </button>
+                </TableHead>
+                <TableHead scope="col" aria-sort={ariaSort('role')}>
+                  <button
+                    type="button"
+                    class="hover:text-foreground inline-flex items-center gap-1 rounded-sm font-medium focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                    onclick={() => toggleSort('role')}
+                  >
+                    {$t('admin.role')}<ArrowUpDown
+                      class={['size-3', sortKey === 'role' ? 'text-foreground' : 'text-muted-foreground']}
+                      aria-hidden="true"
+                    />
+                  </button>
+                </TableHead>
+                <TableHead scope="col" aria-sort={ariaSort('joined')}>
+                  <button
+                    type="button"
+                    class="hover:text-foreground inline-flex items-center gap-1 rounded-sm font-medium focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                    onclick={() => toggleSort('joined')}
+                  >
+                    {$t('admin.joined')}<ArrowUpDown
+                      class={['size-3', sortKey === 'joined' ? 'text-foreground' : 'text-muted-foreground']}
+                      aria-hidden="true"
+                    />
+                  </button>
+                </TableHead>
+                <TableHead scope="col" class="w-24 text-right">
+                  <span class="sr-only">{$t('admin.actions')}</span>
+                </TableHead>
               </TableRow>
-            {:else}
-              {#each sorted as u (u.id)}
+            </TableHeader>
+            <TableBody>
+              {#if pending}
                 <TableRow>
-                  <TableCell>
-                    <div class="flex items-center gap-3">
-                      <Avatar class="size-8">
-                        <AvatarFallback class="bg-muted text-muted-foreground text-xs font-medium">
-                          {initials(u.name || u.login)}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <div class="text-sm font-medium">{u.name || u.login}</div>
-                        <div class="text-muted-foreground text-xs">@{u.login}</div>
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="outline">{$t(`admin.roleNames.${u.role}`)}</Badge>
-                  </TableCell>
-                  <TableCell class="text-muted-foreground text-xs tabular-nums">
-                    {formatDate(u.createdAt)}
-                  </TableCell>
-                  <TableCell class="text-right">
-                    <div class="flex justify-end gap-1">
-                      <Tooltip>
-                        <TooltipTrigger>
-                          {#snippet child({ props })}
-                            <Button
-                              {...props}
-                              variant="ghost"
-                              size="icon"
-                              class="text-muted-foreground hover:text-foreground size-8"
-                              aria-label={$t('admin.editFor', { name: u.name || u.login })}
-                              onclick={() => openEdit(u)}
-                            >
-                              <Pencil class="size-4" />
-                            </Button>
-                          {/snippet}
-                        </TooltipTrigger>
-                        <TooltipContent>{$t('admin.menu.edit')}</TooltipContent>
-                      </Tooltip>
-                      <Tooltip>
-                        <TooltipTrigger>
-                          {#snippet child({ props })}
-                            <Button
-                              {...props}
-                              variant="ghost"
-                              size="icon"
-                              class="text-muted-foreground hover:text-destructive hover:bg-destructive/10 size-8"
-                              aria-label={$t('admin.deleteFor', { name: u.name || u.login })}
-                              onclick={() => (deleting = u)}
-                            >
-                              <Trash2 class="size-4" />
-                            </Button>
-                          {/snippet}
-                        </TooltipTrigger>
-                        <TooltipContent>{$t('admin.menu.delete')}</TooltipContent>
-                      </Tooltip>
-                    </div>
+                  <TableCell colspan={4} class="text-muted-foreground text-sm">
+                    {$t('admin.loading')}
                   </TableCell>
                 </TableRow>
-              {/each}
-            {/if}
-          </TableBody>
-        </Table>
-      </TooltipProvider>
-    </Card>
-  {/if}
+              {:else if !filtered.length}
+                <TableRow>
+                  <TableCell colspan={4}>
+                    <EmptyState
+                      icon={UserX}
+                      title={users.length ? $t('admin.noMatchTitle') : $t('admin.empty')}
+                      description={users.length ? $t('admin.noMatchDescription') : undefined}
+                      class="whitespace-normal"
+                    >
+                      {#if activeFilters}
+                        <Button variant="outline" size="sm" class="mt-4" onclick={resetFilters}>
+                          {$t('admin.filters.reset')}
+                        </Button>
+                      {/if}
+                    </EmptyState>
+                  </TableCell>
+                </TableRow>
+              {:else}
+                {#each sorted as u (u.id)}
+                  <TableRow>
+                    <TableCell>
+                      <div class="flex items-center gap-3">
+                        <Avatar class="size-8">
+                          <AvatarFallback class="bg-muted text-muted-foreground text-xs font-medium">
+                            {initials(u.name || u.login)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <div class="text-sm font-medium">{u.name || u.login}</div>
+                          <div class="text-muted-foreground text-xs">@{u.login}</div>
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline">{$t(`admin.roleNames.${u.role}`)}</Badge>
+                    </TableCell>
+                    <TableCell class="text-muted-foreground text-xs tabular-nums">
+                      {formatDate(u.createdAt)}
+                    </TableCell>
+                    <TableCell class="text-right">
+                      <div class="flex justify-end gap-1">
+                        <Tooltip>
+                          <TooltipTrigger>
+                            {#snippet child({ props })}
+                              <Button
+                                {...props}
+                                variant="ghost"
+                                size="icon"
+                                class="text-muted-foreground hover:text-foreground size-8"
+                                aria-label={$t('admin.editFor', { name: u.name || u.login })}
+                                onclick={() => openEdit(u)}
+                              >
+                                <Pencil class="size-4" />
+                              </Button>
+                            {/snippet}
+                          </TooltipTrigger>
+                          <TooltipContent>{$t('admin.menu.edit')}</TooltipContent>
+                        </Tooltip>
+                        <Tooltip>
+                          <TooltipTrigger>
+                            {#snippet child({ props })}
+                              <Button
+                                {...props}
+                                variant="ghost"
+                                size="icon"
+                                class="text-muted-foreground hover:text-destructive hover:bg-destructive/10 size-8"
+                                aria-label={$t('admin.deleteFor', { name: u.name || u.login })}
+                                onclick={() => (deleting = u)}
+                              >
+                                <Trash2 class="size-4" />
+                              </Button>
+                            {/snippet}
+                          </TooltipTrigger>
+                          <TooltipContent>{$t('admin.menu.delete')}</TooltipContent>
+                        </Tooltip>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                {/each}
+              {/if}
+            </TableBody>
+          </Table>
+        </TooltipProvider>
+      </Card>
+    {/if}
+  </PageBody>
 
   <!-- Edit user -->
   <Dialog open={!!editing} onOpenChange={(v) => { if (!v) editing = null }}>
@@ -456,7 +457,7 @@
             <Label for="edit-role">{$t('admin.role')}</Label>
               <Select bind:value={formRole}>
                 <SelectTrigger id="edit-role">
-                  <SelectValue>{formRoleLabel}</SelectValue>
+                  <SelectValue />
                 </SelectTrigger>
               <SelectContent>
                 {#each ROLES as r (r)}

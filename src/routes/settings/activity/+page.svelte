@@ -5,10 +5,14 @@
   import { Button } from '$lib/components/ui/button'
   import { Input } from '$lib/components/ui/input'
   import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '$lib/components/ui/table'
-  import { Page, PageHeader, PageHeaderHeading } from '$lib/components/ui/page'
+  import { Page, PageBody, PageHeader, PageHeaderHeading } from '$lib/components/ui/page'
+  import { page } from '$app/state'
+  import { routeLabel } from '$lib/breadcrumb-labels'
   import { EmptyState } from '$lib/components/ui/empty-state'
   import { apiFetch, type ApiResponse } from '$lib/api'
   import { locale, t } from '$lib/i18n'
+
+  const title = $derived(routeLabel(page.url.pathname, $t))
 
   // Audit-log settings page. Port of Nuxt `settings/activity.vue`:
   // the action filter is pushed to the server (?action= substring match);
@@ -106,106 +110,110 @@
 </script>
 
 <svelte:head>
-  <title>{$t('settings.activity.title')} · Settings | UIPKGE</title>
+  <title>{title} | UIPKGE</title>
 </svelte:head>
 
 <Page>
   <PageHeader>
-    <PageHeaderHeading title={$t('settings.activity.title')} description={$t('settings.activity.description')} />
+    <PageHeaderHeading {title} description={$t('settings.activity.description')} />
   </PageHeader>
 
-  <Card>
-    <!-- Filters -->
-    <div class="flex flex-col gap-2 border-b p-4 sm:flex-row sm:items-center">
-      <div class="relative w-full sm:w-64">
-        <Search class="text-muted-foreground pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2" aria-hidden="true" />
-        <Input
-          bind:value={actionQuery}
-          onValueChange={scheduleLoad}
-          placeholder={$t('settings.activity.filters.action')}
-          class="h-9 pl-8"
-        />
+  <PageBody class="space-y-4">
+    <Card>
+      <!-- Filters -->
+      <div class="flex flex-col gap-2 border-b p-4 sm:flex-row sm:items-center">
+        <div class="w-full sm:w-64">
+          <Input
+            bind:value={actionQuery}
+            onValueChange={scheduleLoad}
+            size="small"
+            prefixIcon={Search}
+            placeholder={$t('settings.activity.filters.action')}
+            aria-label={$t('settings.activity.filters.action')}
+          />
+        </div>
+        <div class="w-full sm:w-64">
+          <Input
+            bind:value={entityQuery}
+            size="small"
+            prefixIcon={Tag}
+            placeholder={$t('settings.activity.filters.entity')}
+            aria-label={$t('settings.activity.filters.entity')}
+          />
+        </div>
       </div>
-      <div class="relative w-full sm:w-64">
-        <Tag class="text-muted-foreground pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2" aria-hidden="true" />
-        <Input
-          bind:value={entityQuery}
-          placeholder={$t('settings.activity.filters.entity')}
-          class="h-9 pl-8"
-        />
-      </div>
-    </div>
 
-    {#if pending}
-      <div class="text-muted-foreground flex items-center gap-2 px-4 py-4 text-sm">
-        <Loader2 class="size-4 animate-spin" />
-        {$t('settings.activity.states.loading')}
-      </div>
-    {:else if loadError}
-      <EmptyState
-        icon={CloudOff}
-        title={$t('settings.activity.states.error')}
-        description="Something went wrong on our side. Please try again."
-        role="alert"
-        class="p-4"
-      >
-        <Button variant="outline" size="sm" class="mt-4" onclick={() => void load()}>
-          {$t('settings.activity.states.retry')}
-        </Button>
-      </EmptyState>
-    {:else if !filtered.length && isFiltering}
-      <!-- Filters active: say so and offer the way out. -->
-      <EmptyState
-        icon={Search}
-        title={$t('settings.activity.states.noMatchTitle')}
-        description={$t('settings.activity.states.noMatchDescription')}
-        class="p-4"
-      >
-        <Button variant="outline" size="sm" class="mt-4" onclick={clearFilters}>
-          {$t('settings.activity.states.clearFilters')}
-        </Button>
-      </EmptyState>
-    {:else if !filtered.length}
-      <!-- Nothing recorded: explain why, so support can tell "empty" from "broken". -->
-      <EmptyState
-        icon={ActivityIcon}
-        title={$t('settings.activity.states.empty')}
-        description={$t('settings.activity.states.emptyDescription')}
-        class="p-4"
-      />
-    {:else}
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead scope="col">{$t('settings.activity.table.event')}</TableHead>
-            <TableHead scope="col">{$t('settings.activity.table.actor')}</TableHead>
-            <TableHead scope="col">{$t('settings.activity.table.entity')}</TableHead>
-            <TableHead scope="col" class="text-right">{$t('settings.activity.table.time')}</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {#each filtered as item (item.id)}
-            {@const ActionIcon = actionIcon(item.action)}
+      {#if pending}
+        <div class="text-muted-foreground flex items-center gap-2 px-4 py-4 text-sm">
+          <Loader2 class="size-4 animate-spin" />
+          {$t('settings.activity.states.loading')}
+        </div>
+      {:else if loadError}
+        <EmptyState
+          icon={CloudOff}
+          title={$t('settings.activity.states.error')}
+          description="Something went wrong on our side. Please try again."
+          role="alert"
+          class="p-4"
+        >
+          <Button variant="outline" size="sm" class="mt-4" onclick={() => void load()}>
+            {$t('settings.activity.states.retry')}
+          </Button>
+        </EmptyState>
+      {:else if !filtered.length && isFiltering}
+        <!-- Filters active: say so and offer the way out. -->
+        <EmptyState
+          icon={Search}
+          title={$t('settings.activity.states.noMatchTitle')}
+          description={$t('settings.activity.states.noMatchDescription')}
+          class="p-4"
+        >
+          <Button variant="outline" size="sm" class="mt-4" onclick={clearFilters}>
+            {$t('settings.activity.states.clearFilters')}
+          </Button>
+        </EmptyState>
+      {:else if !filtered.length}
+        <!-- Nothing recorded: explain why, so support can tell "empty" from "broken". -->
+        <EmptyState
+          icon={ActivityIcon}
+          title={$t('settings.activity.states.empty')}
+          description={$t('settings.activity.states.emptyDescription')}
+          class="p-4"
+        />
+      {:else}
+        <Table>
+          <TableHeader>
             <TableRow>
-              <TableCell>
-                <span class="flex items-center gap-2 text-sm font-medium">
-                  <ActionIcon class="text-muted-foreground size-4 shrink-0" aria-hidden="true" />
-                  <span class="font-mono text-xs">{item.action}</span>
-                </span>
-              </TableCell>
-              <TableCell class="text-muted-foreground max-w-55 truncate text-xs" title={item.actorEmail ?? undefined}>
-                {item.actorEmail ?? $t('settings.activity.feed.deletedUser')}
-              </TableCell>
-              <TableCell class="text-muted-foreground text-xs">{entityLabel(item)}</TableCell>
-              <TableCell class="text-right">
-                <time title={formatFull(item.createdAt)} class="text-muted-foreground text-xs tabular-nums">
-                  {timeAgo(item.createdAt)}
-                </time>
-              </TableCell>
+              <TableHead scope="col">{$t('settings.activity.table.event')}</TableHead>
+              <TableHead scope="col">{$t('settings.activity.table.actor')}</TableHead>
+              <TableHead scope="col">{$t('settings.activity.table.entity')}</TableHead>
+              <TableHead scope="col" class="text-right">{$t('settings.activity.table.time')}</TableHead>
             </TableRow>
-          {/each}
-        </TableBody>
-      </Table>
-    {/if}
-  </Card>
+          </TableHeader>
+          <TableBody>
+            {#each filtered as item (item.id)}
+              {@const ActionIcon = actionIcon(item.action)}
+              <TableRow>
+                <TableCell>
+                  <span class="flex items-center gap-2 text-sm font-medium">
+                    <ActionIcon class="text-muted-foreground size-4 shrink-0" aria-hidden="true" />
+                    <span class="font-mono text-xs">{item.action}</span>
+                  </span>
+                </TableCell>
+                <TableCell class="text-muted-foreground max-w-55 truncate text-xs" title={item.actorEmail ?? undefined}>
+                  {item.actorEmail ?? $t('settings.activity.feed.deletedUser')}
+                </TableCell>
+                <TableCell class="text-muted-foreground text-xs">{entityLabel(item)}</TableCell>
+                <TableCell class="text-right">
+                  <time title={formatFull(item.createdAt)} class="text-muted-foreground text-xs tabular-nums">
+                    {timeAgo(item.createdAt)}
+                  </time>
+                </TableCell>
+              </TableRow>
+            {/each}
+          </TableBody>
+        </Table>
+      {/if}
+    </Card>
+  </PageBody>
 </Page>

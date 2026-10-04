@@ -38,7 +38,7 @@ export const SAMPLE_INVOICES = [
   { id: 'INV-2084', date: '2026-08-01', period: 'Jul 2026', amount: 162.4, status: 'paid', method: 'Visa ··4242' },
   { id: 'INV-2058', date: '2026-07-01', period: 'Jun 2026', amount: 149.0, status: 'paid', method: 'Visa ··4242' },
   { id: 'INV-2031', date: '2026-06-01', period: 'May 2026', amount: 149.0, status: 'paid', method: 'Visa ··4242' },
-  { id: 'INV-2007', date: '2026-04-01', period: 'Apr 2026', amount: 149.0, status: 'paid', method: 'Visa ··4242' },
+  { id: 'INV-2007', date: '2026-05-01', period: 'Apr 2026', amount: 149.0, status: 'paid', method: 'Visa ··4242' },
   { id: 'INV-1983', date: '2026-04-01', period: 'Mar 2026', amount: 149.0, status: 'paid', method: 'Visa ··4242' },
 ]
 

@@ -17,7 +17,7 @@
   // threshold rule: < 70% neutral, 70-89% warning, >= 90% destructive.
   // Port of Nuxt `UsageBar.vue`.
   const pct = $derived(limit > 0 ? Math.min(100, Math.round((used / limit) * 100)) : 0)
-  const tone = $derived(pct >= 90 ? 'bg-destructive' : pct >= 70 ? 'bg-warning' : 'bg-primary')
+  const tone = $derived(pct >= 90 ? 'bg-destructive' : pct >= 70 ? 'bg-warning' : 'bg-foreground')
   const text = $derived(valueText ?? `${used.toLocaleString()} / ${limit.toLocaleString()}`)
 </script>
 

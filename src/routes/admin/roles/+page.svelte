@@ -6,12 +6,16 @@
   import { Checkbox } from '$lib/components/ui/checkbox'
   import { Input } from '$lib/components/ui/input'
   import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '$lib/components/ui/tooltip'
-  import { Page, PageHeader, PageHeaderHeading } from '$lib/components/ui/page'
+  import { Page, PageBody, PageHeader, PageHeaderHeading } from '$lib/components/ui/page'
+  import { page } from '$app/state'
+  import { routeLabel } from '$lib/breadcrumb-labels'
   import { EmptyState } from '$lib/components/ui/empty-state'
   import DemoDataBanner from '$lib/components/blocks/demo-data-banner/DemoDataBanner.svelte'
   import { allPermissionIds, defaultGrants, permissionGroups, roles, type RoleId } from '$lib/rbac'
   import { t } from '$lib/i18n'
   import { cn } from '$lib/utils'
+
+  const title = $derived(routeLabel(page.url.pathname, $t))
 
   // Admin roles matrix. Port of Nuxt `admin/roles.vue`: sample grants held
   // as Sets per role, diffed against the saved baseline, tri-state group
@@ -73,12 +77,12 @@
 </script>
 
 <svelte:head>
-  <title>{$t('nav.items.roles')} | UIPKGE</title>
+  <title>{title} | UIPKGE</title>
 </svelte:head>
 
 <Page>
   <PageHeader>
-    <PageHeaderHeading title={$t('nav.items.roles')} description={$t('admin.roles.description')} />
+    <PageHeaderHeading {title} description={$t('admin.roles.description')} />
     {#snippet actions()}
       <div class="flex items-center gap-2">
         {#if changeCount}
@@ -98,179 +102,181 @@
     {/snippet}
   </PageHeader>
 
-  <DemoDataBanner message={$t('admin.roles.demo')} />
+  <PageBody class="space-y-4">
+    <DemoDataBanner message={$t('admin.roles.demo')} />
 
-  <!-- Role summaries: click to highlight that column -->
-  <div class="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-5">
-    {#each roles as role (role.id)}
-      <button
-        type="button"
-        aria-pressed={focusRole === role.id}
-        class={cn(
-          cardVariants(),
-          'focus-visible:ring-ring/50 p-4 text-left focus-visible:ring-[3px] focus-visible:outline-none',
-          focusRole === role.id ? 'border-primary/50 bg-primary/5 ring-1 ring-primary' : 'hover:border-foreground/20',
-        )}
-        onclick={() => (focusRole = focusRole === role.id ? null : role.id)}
-      >
-        <div class="flex items-center justify-between gap-2">
-          <span class="text-sm font-semibold">{role.name}</span>
-          {#if role.locked}
-            <Lock class="text-muted-foreground size-3.5" aria-label={$t('admin.roles.locked')} />
-          {/if}
-        </div>
-        <p class="text-muted-foreground mt-1 line-clamp-2 text-xs">{role.description}</p>
-        <div class="text-muted-foreground mt-3 flex items-center justify-between text-xs tabular-nums">
-          <span class="flex items-center gap-1">
-            <Users class="size-3.5" aria-hidden="true" />
-            {$t('admin.roles.members', { n: role.members })}
-          </span>
-          <span><span class="text-foreground font-medium">{grants[role.id].size}</span>/{allPermissionIds.length}</span>
-        </div>
-        <div class="bg-muted mt-2 h-1 overflow-hidden rounded-full">
-          <div
-            class="bg-primary h-full rounded-full transition-[width] duration-200"
-            style={`width: ${Math.round((grants[role.id].size / allPermissionIds.length) * 100)}%`}
-          ></div>
-        </div>
-      </button>
-    {/each}
-  </div>
+    <!-- Role summaries: click to highlight that column -->
+    <div class="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-5">
+      {#each roles as role (role.id)}
+        <button
+          type="button"
+          aria-pressed={focusRole === role.id}
+          class={cn(
+            cardVariants(),
+            'focus-visible:ring-ring/50 p-4 text-left focus-visible:ring-[3px] focus-visible:outline-none',
+            focusRole === role.id ? 'border-primary/50 bg-primary/5 ring-1 ring-primary' : 'hover:border-foreground/20',
+          )}
+          onclick={() => (focusRole = focusRole === role.id ? null : role.id)}
+        >
+          <div class="flex items-center justify-between gap-2">
+            <span class="text-sm font-semibold">{role.name}</span>
+            {#if role.locked}
+              <Lock class="text-muted-foreground size-3.5" aria-label={$t('admin.roles.locked')} />
+            {/if}
+          </div>
+          <p class="text-muted-foreground mt-1 line-clamp-2 text-xs">{role.description}</p>
+          <div class="text-muted-foreground mt-3 flex items-center justify-between text-xs tabular-nums">
+            <span class="flex items-center gap-1">
+              <Users class="size-3.5" aria-hidden="true" />
+              {$t('admin.roles.members', { n: role.members })}
+            </span>
+            <span><span class="text-foreground font-medium">{grants[role.id].size}</span>/{allPermissionIds.length}</span>
+          </div>
+          <div class="bg-muted mt-2 h-1 overflow-hidden rounded-full">
+            <div
+              class="bg-primary h-full rounded-full transition-[width] duration-200"
+              style={`width: ${Math.round((grants[role.id].size / allPermissionIds.length) * 100)}%`}
+            ></div>
+          </div>
+        </button>
+      {/each}
+    </div>
 
-  <!-- Permission matrix -->
-  <Card class="gap-0 py-0">
-    <CardHeader class="border-b">
-      <CardTitle class="text-base">{$t('admin.roles.matrix.title')}</CardTitle>
-      <CardDescription>{$t('admin.roles.matrix.description')}</CardDescription>
-      <CardAction>
-        <Input
-          bind:value={search}
-          size="small"
-          prefixIcon={Search}
-          allowClear
-          placeholder={$t('admin.roles.matrix.search')}
-          class="w-40 sm:w-64"
-        />
-      </CardAction>
-    </CardHeader>
-    <CardContent class="p-0">
-      <TooltipProvider delayDuration={200}>
-        {#if visibleGroups.length}
-          <div class="max-h-[640px] overflow-auto">
-            <table class="w-full min-w-[720px] border-separate border-spacing-0 text-sm">
-              <thead>
-                <tr>
-                    <th scope="col" class="bg-card text-muted-foreground sticky top-0 left-0 z-20 border-b px-4 py-2.5 text-left text-xs font-medium tracking-wider uppercase">
-                      {$t('admin.roles.matrix.permission')}
-                    </th>
-                    {#each roles as role (role.id)}
-                      <th
-                        scope="col"
-                        class={[
-                          'sticky top-0 z-10 w-24 border-b px-2 py-2.5 text-center text-xs font-medium',
-                          focusRole === role.id ? 'bg-primary/5 text-foreground' : 'bg-card text-muted-foreground',
-                        ]}
-                      >
-                      <span class="inline-flex items-center gap-1">
-                        {role.name}
-                        {#if role.locked}
-                          <Lock class="size-3" aria-hidden="true" />
-                        {/if}
-                      </span>
-                    </th>
-                  {/each}
-                </tr>
-              </thead>
-              {#each visibleGroups as group (group.id)}
-                <tbody>
-                  <!-- Group row: tri-state checkbox per role -->
-                  <tr class="bg-muted">
-                    <th scope="rowgroup" class="bg-muted sticky left-0 border-b px-4 py-2 text-left text-xs font-semibold">
-                      {group.label}
-                      <span class="text-muted-foreground ml-1 font-normal">{group.permissions.length}</span>
-                    </th>
-                    {#each roles as role (role.id)}
-                      {@const ids = group.permissions.map(p => p.id)}
-                      <td class={['border-b px-2 py-2 text-center', focusRole === role.id && 'bg-primary/5']}>
-                        <div class="flex justify-center">
-                          <Checkbox
-                            checked={groupState(role.id, ids)}
-                            disabled={role.locked}
-                            aria-label={$t('admin.roles.matrix.groupAria', { group: group.label, role: role.name })}
-                            onCheckedChange={(v) => toggleGroup(role.id, ids, v === true)}
-                          />
-                        </div>
-                      </td>
-                    {/each}
-                  </tr>
-                  {#each group.permissions as perm (perm.id)}
-                    <tr class="hover:bg-muted/40 transition-colors">
-                      <th scope="row" class="bg-card sticky left-0 border-b px-4 py-2.5 text-left font-normal">
-                        <div class="flex items-center gap-1.5">
-                          <span class="font-medium">{perm.label}</span>
-                          {#if perm.risky}
-                            <Tooltip>
-                              <TooltipTrigger>
-                                {#snippet child({ props })}
-                                  <span {...props}>
-                                    <ShieldAlert
-                                      class="text-warning size-3.5"
-                                      aria-label={$t('admin.roles.risky')}
-                                    />
-                                  </span>
-                                {/snippet}
-                              </TooltipTrigger>
-                              <TooltipContent>{$t('admin.roles.riskyHint')}</TooltipContent>
-                            </Tooltip>
-                          {/if}
-                        </div>
-                        <div class="text-muted-foreground text-xs">{perm.description}</div>
+    <!-- Permission matrix -->
+    <Card class="gap-0 py-0">
+      <CardHeader class="border-b">
+        <CardTitle class="text-base">{$t('admin.roles.matrix.title')}</CardTitle>
+        <CardDescription>{$t('admin.roles.matrix.description')}</CardDescription>
+        <CardAction>
+          <Input
+            bind:value={search}
+            size="small"
+            prefixIcon={Search}
+            allowClear
+            placeholder={$t('admin.roles.matrix.search')}
+            class="w-40 sm:w-64"
+          />
+        </CardAction>
+      </CardHeader>
+      <CardContent class="p-0">
+        <TooltipProvider delayDuration={200}>
+          {#if visibleGroups.length}
+            <div class="max-h-[640px] overflow-auto">
+              <table class="w-full min-w-[720px] border-separate border-spacing-0 text-sm">
+                <thead>
+                  <tr>
+                      <th scope="col" class="bg-card text-muted-foreground sticky top-0 left-0 z-20 border-b px-4 py-2.5 text-left text-xs font-medium tracking-wider uppercase">
+                        {$t('admin.roles.matrix.permission')}
                       </th>
                       {#each roles as role (role.id)}
-                        <td
+                        <th
+                          scope="col"
                           class={[
-                            'border-b px-2 py-2.5 text-center transition-colors',
-                            isChanged(role.id, perm.id) ? 'bg-warning/10 ring-1 ring-inset ring-warning/60' : focusRole === role.id ? 'bg-primary/5' : '',
+                            'sticky top-0 z-10 w-24 border-b px-2 py-2.5 text-center text-xs font-medium',
+                            focusRole === role.id ? 'bg-primary/5 text-foreground' : 'bg-card text-muted-foreground',
                           ]}
                         >
+                        <span class="inline-flex items-center gap-1">
+                          {role.name}
+                          {#if role.locked}
+                            <Lock class="size-3" aria-hidden="true" />
+                          {/if}
+                        </span>
+                      </th>
+                    {/each}
+                  </tr>
+                </thead>
+                {#each visibleGroups as group (group.id)}
+                  <tbody>
+                    <!-- Group row: tri-state checkbox per role -->
+                    <tr class="bg-muted">
+                      <th scope="rowgroup" class="bg-muted sticky left-0 border-b px-4 py-2 text-left text-xs font-semibold">
+                        {group.label}
+                        <span class="text-muted-foreground ml-1 font-normal">{group.permissions.length}</span>
+                      </th>
+                      {#each roles as role (role.id)}
+                        {@const ids = group.permissions.map(p => p.id)}
+                        <td class={['border-b px-2 py-2 text-center', focusRole === role.id && 'bg-primary/5']}>
                           <div class="flex justify-center">
                             <Checkbox
-                              checked={has(role.id, perm.id)}
+                              checked={groupState(role.id, ids)}
                               disabled={role.locked}
-                              aria-label={`${perm.label} — ${role.name}`}
-                              onCheckedChange={(v) => toggle(role.id, perm.id, v === true)}
+                              aria-label={$t('admin.roles.matrix.groupAria', { group: group.label, role: role.name })}
+                              onCheckedChange={(v) => toggleGroup(role.id, ids, v === true)}
                             />
                           </div>
                         </td>
                       {/each}
                     </tr>
-                  {/each}
-                </tbody>
-              {/each}
-            </table>
-          </div>
-        {:else}
-          <EmptyState
-            icon={Search}
-            title={$t('admin.roles.matrix.emptyTitle')}
-            description={$t('admin.roles.matrix.emptyDescription')}
-          />
-        {/if}
-      </TooltipProvider>
-    </CardContent>
-    <div class="text-muted-foreground flex flex-wrap items-center gap-4 border-t px-4 py-2.5 text-xs">
-      <span class="flex items-center gap-1.5">
-        <ShieldAlert class="text-warning size-3.5" aria-hidden="true" />
-        {$t('admin.roles.legend.risky')}
-      </span>
-      <span class="flex items-center gap-1.5">
-        <span class="bg-warning/10 border-warning/60 size-3.5 rounded-sm border"></span>
-        {$t('admin.roles.legend.changed')}
-      </span>
-      <span class="flex items-center gap-1.5">
-        <Lock class="size-3.5" aria-hidden="true" />
-        {$t('admin.roles.legend.locked')}
-      </span>
-    </div>
-  </Card>
+                    {#each group.permissions as perm (perm.id)}
+                      <tr class="hover:bg-muted/40 transition-colors">
+                        <th scope="row" class="bg-card sticky left-0 border-b px-4 py-2.5 text-left font-normal">
+                          <div class="flex items-center gap-1.5">
+                            <span class="font-medium">{perm.label}</span>
+                            {#if perm.risky}
+                              <Tooltip>
+                                <TooltipTrigger>
+                                  {#snippet child({ props })}
+                                    <span {...props}>
+                                      <ShieldAlert
+                                        class="text-warning size-3.5"
+                                        aria-label={$t('admin.roles.risky')}
+                                      />
+                                    </span>
+                                  {/snippet}
+                                </TooltipTrigger>
+                                <TooltipContent>{$t('admin.roles.riskyHint')}</TooltipContent>
+                              </Tooltip>
+                            {/if}
+                          </div>
+                          <div class="text-muted-foreground text-xs">{perm.description}</div>
+                        </th>
+                        {#each roles as role (role.id)}
+                          <td
+                            class={[
+                              'border-b px-2 py-2.5 text-center transition-colors',
+                              isChanged(role.id, perm.id) ? 'bg-warning/10 ring-1 ring-inset ring-warning/60' : focusRole === role.id ? 'bg-primary/5' : '',
+                            ]}
+                          >
+                            <div class="flex justify-center">
+                              <Checkbox
+                                checked={has(role.id, perm.id)}
+                                disabled={role.locked}
+                                aria-label={`${perm.label} — ${role.name}`}
+                                onCheckedChange={(v) => toggle(role.id, perm.id, v === true)}
+                              />
+                            </div>
+                          </td>
+                        {/each}
+                      </tr>
+                    {/each}
+                  </tbody>
+                {/each}
+              </table>
+            </div>
+          {:else}
+            <EmptyState
+              icon={Search}
+              title={$t('admin.roles.matrix.emptyTitle')}
+              description={$t('admin.roles.matrix.emptyDescription')}
+            />
+          {/if}
+        </TooltipProvider>
+      </CardContent>
+      <div class="text-muted-foreground flex flex-wrap items-center gap-4 border-t px-4 py-2.5 text-xs">
+        <span class="flex items-center gap-1.5">
+          <ShieldAlert class="text-warning size-3.5" aria-hidden="true" />
+          {$t('admin.roles.legend.risky')}
+        </span>
+        <span class="flex items-center gap-1.5">
+          <span class="bg-warning/10 border-warning/60 size-3.5 rounded-sm border"></span>
+          {$t('admin.roles.legend.changed')}
+        </span>
+        <span class="flex items-center gap-1.5">
+          <Lock class="size-3.5" aria-hidden="true" />
+          {$t('admin.roles.legend.locked')}
+        </span>
+      </div>
+    </Card>
+  </PageBody>
 </Page>
