@@ -22,6 +22,8 @@
   import { apiFetch, type ApiResponse } from '$lib/api'
   import { locale, t } from '$lib/i18n'
 
+  let { data } = $props()
+
   const title = $derived(routeLabel(page.url.pathname, $t))
 
   // Admin users page. Port of Nuxt `admin/users.vue`: live list from
@@ -38,40 +40,28 @@
   const ROLES = ['admin', 'editor', 'user'] as const
 
   let users = $state<AdminUser[]>([])
-  let pending = $state(true)
+  let pending = $state(false)
   let forbidden = $state(false)
   let failed = $state(false)
 
+  function apply(res: ApiResponse<AdminUser[]>) {
+    forbidden = !res.ok && res.error.code === 'FORBIDDEN'
+    failed = !res.ok && !forbidden
+    if (res.ok) users = res.data.map(u => ({ ...u }))
+  }
+
+  // First paint comes from +page.server.ts; refresh() re-fetches on retry.
+  untrack(() => apply(data.usersRes as ApiResponse<AdminUser[]>))
+
   async function refresh() {
     pending = true
-    forbidden = false
-    failed = false
-    const res: ApiResponse<AdminUser[]> = await apiFetch('/api/admin/users')
-    if (res.ok) {
-      users = res.data.map(u => ({ ...u }))
-    }
-    else if (res.error.code === 'FORBIDDEN') {
-      forbidden = true
-    }
-    else {
-      failed = true
-    }
+    apply(await apiFetch('/api/admin/users'))
     pending = false
   }
 
-  $effect(() => {
-    untrack(() => void refresh())
-    untrack(() => void refreshRole())
-  })
-
   // WHY (Rule83): the 403 names the current role vs the required admin role
   // and gives a next step, instead of a bare "no permission".
-  let sessionRole = $state<string | null>(null)
-
-  async function refreshRole() {
-    const res: ApiResponse<{ user: { role?: string } }> = await apiFetch('/api/me')
-    if (res.ok) sessionRole = res.data.user.role ?? null
-  }
+  const sessionRole = $derived(data.user?.role ?? null)
 
   const currentRole = $derived(sessionRole ?? $t('admin.roleNames.user'))
 

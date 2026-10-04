@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from 'svelte'
+  import { untrack } from 'svelte'
   import { AlertCircle, CircleDot, FolderPlus, Loader2, Plus } from '@lucide/svelte'
   import { page } from '$app/state'
   import { Avatar, AvatarFallback } from '$lib/components/ui/avatar'
@@ -26,6 +26,8 @@
   import { apiFetch, type ApiResponse } from '$lib/api'
   import { locale, t } from '$lib/i18n'
 
+  let { data } = $props()
+
   const title = $derived(routeLabel(page.url.pathname, $t))
 
   interface Project {
@@ -39,25 +41,22 @@
   }
 
   let projects = $state<Project[]>([])
-  let pending = $state(true)
+  let pending = $state(false)
   let fetchError = $state<string | null>(null)
+
+  function apply(res: ApiResponse<{ projects: Project[] }>) {
+    fetchError = res.ok ? null : res.error.message
+    if (res.ok) projects = res.data.projects
+  }
+
+  // First paint comes from +page.server.ts; load() re-fetches after changes.
+  untrack(() => apply(data.projectsRes as ApiResponse<{ projects: Project[] }>))
 
   async function load() {
     pending = true
-    fetchError = null
-    const res: ApiResponse<{ projects: Project[] }> = await apiFetch('/api/projects')
-    if (res.ok) {
-      projects = res.data.projects
-    }
-    else {
-      fetchError = res.error.message
-    }
+    apply(await apiFetch('/api/projects'))
     pending = false
   }
-
-  onMount(() => {
-    void load()
-  })
 
   // Members, status and open-task counts aren't in the projects API yet, so
   // each card gets deterministic sample values keyed by project id. Swap this

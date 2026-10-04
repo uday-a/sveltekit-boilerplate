@@ -52,47 +52,46 @@
   const canInvite = $derived(data.user?.role === 'admin' || data.user?.role === 'editor')
 
   let members = $state<Member[]>([])
-  let membersPending = $state(true)
+  let membersPending = $state(false)
   let membersFailed = $state(false)
   let pendingInvites = $state<PendingInvite[]>([])
-  let invitesPending = $state(true)
+  let invitesPending = $state(false)
   let invitesFailed = $state(false)
   let invitesForbidden = $state(false)
 
+  function applyMembers(res: ApiResponse<{ members: Member[] }>) {
+    membersFailed = !res.ok
+    if (res.ok) members = res.data.members.map(m => ({ ...m }))
+  }
+
+  function applyInvites(res: ApiResponse<{ invites: PendingInvite[] }>) {
+    invitesFailed = false
+    invitesForbidden = false
+    if (res.ok) pendingInvites = res.data.invites
+    // A 403 on the invites endpoint just means the viewer isn't
+    // admin/editor — not a failure. Show the viewer note instead.
+    else if (res.error.code === 'FORBIDDEN') invitesForbidden = true
+    else invitesFailed = true
+  }
+
+  // First paint comes from +page.server.ts (SSR'd lists, no empty flash);
+  // the refresh functions below re-fetch after mutations.
+  untrack(() => {
+    applyMembers(data.membersRes as ApiResponse<{ members: Member[] }>)
+    applyInvites(data.invitesRes as ApiResponse<{ invites: PendingInvite[] }>)
+  })
+
   async function refreshMembers() {
     membersPending = true
-    membersFailed = false
-    const res: ApiResponse<{ members: Member[] }> = await apiFetch('/api/team/members')
-    if (res.ok) members = res.data.members.map(m => ({ ...m }))
-    else membersFailed = true
+    applyMembers(await apiFetch('/api/team/members'))
     membersPending = false
   }
 
   async function refreshInvites() {
     invitesPending = true
-    invitesFailed = false
-    invitesForbidden = false
-    const res: ApiResponse<{ invites: PendingInvite[] }> = await apiFetch('/api/team/invites')
-    if (res.ok) {
-      pendingInvites = res.data.invites
-    }
-    else if (res.error.code === 'FORBIDDEN') {
-      // A 403 on the invites endpoint just means the viewer isn't
-      // admin/editor — not a failure. Show the viewer note instead.
-      invitesForbidden = true
-    }
-    else {
-      invitesFailed = true
-    }
+    applyInvites(await apiFetch('/api/team/invites'))
     invitesPending = false
   }
-
-  $effect(() => {
-    untrack(() => {
-      void refreshMembers()
-      void refreshInvites()
-    })
-  })
 
   const headerDescription = $derived(
     membersFailed
