@@ -36,12 +36,12 @@
 </svelte:head>
 
 <div class="bg-background text-foreground min-h-screen">
-  <main class="mx-auto flex min-h-screen max-w-xl flex-col justify-center px-6 py-12">
-    <ol class="mb-6 flex items-center gap-3 text-xs">
+  <main class="mx-auto flex min-h-screen max-w-xl flex-col justify-center px-4 py-4">
+    <ol class="mb-4 flex items-center gap-3 text-xs">
       {#each steps as label, i (label)}
         <li class="flex items-center gap-2">
           <span
-            class={'flex size-6 items-center justify-center rounded-full border text-xs font-medium ' +
+            class={'flex size-6 items-center justify-center rounded-full border text-xs font-medium tabular-nums ' +
               (i < step
                 ? 'bg-primary text-primary-foreground border-primary'
                 : i === step
@@ -49,14 +49,14 @@
                   : 'text-muted-foreground')}
           >
             {#if i < step}
-              <Check class="size-3" />
+              <Check class="size-3.5" aria-hidden="true" />
             {:else}
               {i + 1}
             {/if}
           </span>
           <span class={i === step ? 'font-medium' : 'text-muted-foreground'}>{label}</span>
           {#if i < steps.length - 1}
-            <ArrowRight class="text-muted-foreground size-3" />
+            <ArrowRight class="text-muted-foreground size-3.5" aria-hidden="true" />
           {/if}
         </li>
       {/each}
@@ -161,7 +161,7 @@
       </CardContent>
     </Card>
 
-    <div class="mt-6 flex items-center justify-between">
+    <div class="mt-4 flex items-center justify-between">
       {#if step > 0}
         <Button
           variant="ghost"

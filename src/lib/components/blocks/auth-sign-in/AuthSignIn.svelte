@@ -20,16 +20,18 @@
 </script>
 
 <script lang="ts">
-  import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '$lib/components/ui/card'
+  import { Card, CardContent, CardDescription, CardFooter, CardHeader } from '$lib/components/ui/card'
   import { Input } from '$lib/components/ui/input'
   import { Label } from '$lib/components/ui/label'
   import { Button } from '$lib/components/ui/button'
   import { Checkbox } from '$lib/components/ui/checkbox'
   import { Separator } from '$lib/components/ui/separator'
+  import { t } from '$lib/i18n'
 
   let {
-    title = 'Welcome back',
-    description = 'Sign in to your account to continue',
+    // Undefined defaults fall back to $t() in the template (reactive per locale).
+    title,
+    description,
     signUpHref = '/sign-up',
     forgotPasswordHref = '/forgot-password',
     oauthProviders = ['github', 'google'],
@@ -75,51 +77,60 @@
   </svg>
 {/snippet}
 
-<div data-slot="auth-sign-in" class={['bg-background flex min-h-svh items-center justify-center p-6', className]}>
+<div data-slot="auth-sign-in" class={['bg-background flex min-h-svh items-center justify-center p-4', className]}>
   <Card class="w-full max-w-sm">
     <CardHeader class="text-center">
-      <CardTitle as="h1" class="text-2xl">{title}</CardTitle>
-      <CardDescription>{description}</CardDescription>
+      <h1 class="text-2xl leading-tight font-semibold tracking-tight">{title ?? $t('auth.signIn.title')}</h1>
+      <CardDescription>{description ?? $t('auth.signIn.description')}</CardDescription>
     </CardHeader>
     <CardContent>
-      <form class="space-y-4" onsubmit={handleSubmit}>
+      <form method="post" class="space-y-4" onsubmit={handleSubmit}>
         <div class="grid gap-2">
-          <Label for="email">Email</Label>
+          <Label for="email">{$t('auth.signIn.emailLabel')}</Label>
           <Input
             id="email"
             bind:value={email}
+            name="email"
             type="email"
-            placeholder="you@company.com"
+            placeholder={$t('auth.signIn.emailPlaceholder')}
             autocomplete="email"
+            spellcheck="false"
             required
           />
         </div>
         <div class="grid gap-2">
           <div class="flex items-center justify-between">
-            <Label for="password">Password</Label>
+            <Label for="password">{$t('auth.signIn.passwordLabel')}</Label>
             <a
               href={forgotPasswordHref}
               class="text-muted-foreground hover:text-foreground text-xs underline-offset-4 hover:underline"
             >
-              Forgot password?
+              {$t('auth.signIn.forgotPassword')}
             </a>
           </div>
-          <Input id="password" bind:value={password} type="password" autocomplete="current-password" required />
+          <Input
+            id="password"
+            bind:value={password}
+            name="password"
+            type="password"
+            autocomplete="current-password"
+            required
+          />
         </div>
         <div class="flex items-center gap-2">
           <Checkbox id="remember" checked={remember} onCheckedChange={(v) => (remember = v === true)} />
-          <Label for="remember" class="text-sm font-normal">Remember me for 30 days</Label>
+          <Label for="remember" class="text-sm font-normal">{$t('auth.signIn.rememberMe')}</Label>
         </div>
-        <Button type="submit" class="w-full">Sign in</Button>
+        <Button type="submit" class="w-full">{$t('auth.signIn.submit')}</Button>
       </form>
 
       {#if oauthProviders.length > 0}
-        <div class="my-6 flex items-center gap-3">
+        <div class="my-4 flex items-center gap-3">
           <Separator class="flex-1" />
-          <span class="text-muted-foreground text-xs uppercase">or continue with</span>
+          <span class="text-muted-foreground text-xs font-medium tracking-wider uppercase">{$t('auth.signIn.orContinueWith')}</span>
           <Separator class="flex-1" />
         </div>
-        <div class="grid gap-2" class:sm:grid-cols-2={oauthProviders.length > 1}>
+        <div class={['grid gap-2', oauthProviders.length > 1 && 'sm:grid-cols-2']}>
           {#if oauthProviders.includes('github')}
             <Button variant="outline" type="button" onclick={() => onOAuth?.('github')}>
               {@render githubIcon()}
@@ -137,8 +148,8 @@
     </CardContent>
     <CardFooter class="justify-center">
       <p class="text-muted-foreground text-sm">
-        Don't have an account?
-        <a href={signUpHref} class="text-foreground font-medium underline-offset-4 hover:underline">Sign up</a>
+        {$t('auth.signIn.noAccount')}
+        <a href={signUpHref} class="text-foreground font-medium underline-offset-4 hover:underline">{$t('auth.signIn.signUpLink')}</a>
       </p>
     </CardFooter>
   </Card>

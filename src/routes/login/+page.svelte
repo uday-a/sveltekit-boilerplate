@@ -1,8 +1,7 @@
 <script lang="ts">
   import { goto, invalidateAll } from '$app/navigation'
   import { page } from '$app/state'
-  import { toast } from 'svelte-sonner'
-  import { Sparkles } from '@lucide/svelte'
+  import { AlertCircle, Mail, Sparkles } from '@lucide/svelte'
   import { Button } from '$lib/components/ui/button'
   import AuthSignIn, {
     type OAuthProvider,
@@ -16,11 +15,11 @@
 
   const next = $derived(safeRedirectPath(page.url.searchParams.get('next')))
 
-  // Show an explanatory error toast when the magic-link verify endpoint
+  // Show an explanatory error banner when the magic-link verify endpoint
   // bounces a bad/expired/used token. Map the short ?error= code from the
   // /auth/magic-link redirect to user-facing copy (same map as nuxt).
-  function errorMessageFor(code: string | null): string | null {
-    switch (code) {
+  const errorBanner = $derived.by(() => {
+    switch (page.url.searchParams.get('error')) {
       case 'magic-link-expired': return 'That sign-in link expired. Request a fresh one below.'
       case 'magic-link-used': return 'That sign-in link was already used. Request a fresh one below.'
       case 'magic-link-invalid': return 'That sign-in link is invalid. Request a fresh one below.'
@@ -29,16 +28,6 @@
       case 'magic-link-failed': return 'Sign-in failed. Try again or use GitHub.'
       case 'oauth': return 'GitHub sign-in failed. Try again.'
       default: return null
-    }
-  }
-
-  // Fire once on mount — the $effect re-runs only if the URL changes.
-  let errorToastShown = $state(false)
-  $effect(() => {
-    const message = errorMessageFor(page.url.searchParams.get('error'))
-    if (message && !errorToastShown) {
-      errorToastShown = true
-      toast.error(message)
     }
   })
 
@@ -64,8 +53,11 @@
   // We hijack the email field and ignore the password — magic-link IS the
   // auth, no password needed. The block's password field becomes vestigial
   // when GitHub OAuth + magic-link are the only configured paths.
-  // Progress/success feedback is toast-driven (no local state machine).
+  type LinkState = { kind: 'idle' } | { kind: 'sending' } | { kind: 'sent', email: string } | { kind: 'error', message: string }
+  let linkState = $state<LinkState>({ kind: 'idle' })
+
   async function onSubmit(payload: SignInPayload) {
+    linkState = { kind: 'sending' }
     let res: ApiResponse<{ expiresInMin: number }>
     try {
       const r = await fetch('/auth/magic-link', {
@@ -80,10 +72,10 @@
     }
 
     if (!res.ok) {
-      toast.error(res.error.message)
+      linkState = { kind: 'error', message: res.error.message }
       return
     }
-    toast.success(`Sign-in link sent to ${payload.email}. Check your inbox.`)
+    linkState = { kind: 'sent', email: payload.email }
   }
 
   function onOAuth(provider: OAuthProvider) {
@@ -100,7 +92,7 @@
   <title>Sign in | UIPKGE</title>
 </svelte:head>
 
-<div class="bg-background relative flex min-h-svh items-center justify-center p-6 md:p-10">
+<div class="bg-background relative flex min-h-svh items-center justify-center p-4 md:p-4">
   <div class="w-full max-w-sm">
     <AuthSignIn
       forgotPasswordHref="/forgot-password"
@@ -109,6 +101,34 @@
       {onSubmit}
       {onOAuth}
     />
+
+    <!-- Top toast overlays — error banner on bad magic link, confirmation on send -->
+    {#if errorBanner}
+      <div class="fixed top-6 right-6 z-50 max-w-sm">
+        <div class="bg-popover text-destructive border-destructive/30 flex items-center gap-2 rounded-lg border p-4 text-sm shadow-lg">
+          <AlertCircle class="size-4 shrink-0" aria-hidden="true" />
+          <span>{errorBanner}</span>
+        </div>
+      </div>
+    {/if}
+
+    {#if linkState.kind === 'sent'}
+      <div class="fixed top-6 right-6 z-50 max-w-sm">
+        <div class="bg-popover text-popover-foreground flex items-center gap-2 rounded-lg border p-4 text-sm shadow-lg">
+          <Mail class="size-4 shrink-0" aria-hidden="true" />
+          <span>Sign-in link sent to <strong class="font-semibold">{linkState.email}</strong>. Check your inbox.</span>
+        </div>
+      </div>
+    {/if}
+
+    {#if linkState.kind === 'error'}
+      <div class="fixed top-6 right-6 z-50 max-w-sm">
+        <div class="bg-popover text-destructive border-destructive/30 flex items-center gap-2 rounded-lg border p-4 text-sm shadow-lg">
+          <AlertCircle class="size-4 shrink-0" aria-hidden="true" />
+          <span>{linkState.message}</span>
+        </div>
+      </div>
+    {/if}
   </div>
 
   <!-- Floating demo affordance — only shown when demo mode is on.
@@ -116,8 +136,8 @@
        form's layout, and explicit about being a demo (not a real path). -->
   {#if data.demoMode}
     <div class="fixed inset-x-0 bottom-6 z-40 flex justify-center px-4">
-      <div class="bg-background/95 ring-border/60 flex items-center gap-3 rounded-full border px-4 py-2 shadow-lg backdrop-blur ring-1">
-        <Sparkles class="text-primary size-4" />
+      <div class="bg-background/95 flex items-center gap-3 rounded-full border px-4 py-2 shadow-lg backdrop-blur">
+        <Sparkles class="text-primary size-4" aria-hidden="true" />
         <span class="text-muted-foreground text-sm">
           Just looking around? Try the demo workspace.
         </span>

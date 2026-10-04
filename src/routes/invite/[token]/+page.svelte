@@ -58,6 +58,8 @@
   )
   const signinHref = $derived(`/login?next=${encodeURIComponent(`/invite/${token}`)}`)
 
+  // Role labels as the team page shows them (Member/Editor/Admin), never the raw enum.
+  const roleName = $derived(invite ? $t(`admin.roleNames.${invite.role}`) : '')
   const emailMismatch = $derived(
     Boolean(invite && data.user && (data.user.email ?? '').toLowerCase() !== invite.email.toLowerCase()),
   )
@@ -104,7 +106,7 @@
       <Card>
         <CardHeader class="items-center text-center">
           <CardTitle as="h1" class="pt-3 text-2xl">{$t('invite.joinTitle')}</CardTitle>
-          <CardDescription>{$t('invite.description', { role: invite.role })}</CardDescription>
+          <CardDescription>{$t('invite.description', { role: roleName })}</CardDescription>
         </CardHeader>
         <CardContent class="space-y-3">
           <div class="text-muted-foreground flex items-center gap-2 rounded-md border px-3 py-2 text-sm">
@@ -113,7 +115,7 @@
           </div>
           <div class="text-muted-foreground flex items-center gap-2 rounded-md border px-3 py-2 text-sm">
             <Users class="size-4" aria-hidden="true" />
-            <span>{$t('invite.roleLabel')}: <span class="text-foreground">{invite.role}</span></span>
+            <span>{$t('invite.roleLabel')}: <span class="text-foreground">{roleName}</span></span>
           </div>
           {#if emailMismatch}
             <div class="text-muted-foreground text-center text-xs">

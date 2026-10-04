@@ -1,9 +1,11 @@
 <script lang="ts">
-  import { toast } from 'svelte-sonner'
   import AuthPasswordReset from '$lib/components/blocks/auth-password-reset/AuthPasswordReset.svelte'
   import type { ApiResponse } from '$lib/server/response'
 
+  let errorMsg = $state('')
+
   async function onRequest(email: string) {
+    errorMsg = ''
     let res: ApiResponse<{ expiresInMin: number }>
     try {
       const r = await fetch('/auth/magic-link', {
@@ -17,10 +19,7 @@
       res = { ok: false, error: { code: 'INTERNAL', message: 'Failed to send link' } }
     }
 
-    // Errors surface as a toast rather than inside the card. Keeping the
-    // card's existing stage machine intact so any AuthPasswordReset
-    // registry update lands cleanly.
-    if (!res.ok) toast.error(res.error.message)
+    if (!res.ok) errorMsg = res.error.message
   }
 
   // The /reset path is unused — magic-link IS the recovery. Keep the
@@ -39,3 +38,13 @@
   {onRequest}
   {onReset}
 />
+<!-- Errors surface in a toast-style overlay rather than inside the card.
+     Keeping the card's existing stage machine intact so any
+     AuthPasswordReset registry update lands cleanly. -->
+{#if errorMsg}
+  <div
+    class="border-destructive/30 bg-background/95 text-destructive fixed inset-x-0 bottom-6 z-50 mx-auto w-fit max-w-md rounded-full border px-4 py-2 text-sm shadow-lg backdrop-blur"
+  >
+    {errorMsg}
+  </div>
+{/if}
