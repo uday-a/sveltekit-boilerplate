@@ -30,7 +30,7 @@ export async function POST(event: RequestEvent) {
       login: 'john.doe',
       name: 'John Doe',
       email: 'john.doe@example.com',
-      avatar: 'https://uday.cc/avatar-twitter.png',
+      avatar: null,
       role: 'admin',
     },
     loggedInAt: Date.now(),
