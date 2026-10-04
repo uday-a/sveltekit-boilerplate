@@ -132,37 +132,37 @@
     <div role="columnheader" aria-sort={ariaSort('id')} class="flex">
       <button class="flex items-center gap-1 rounded-sm text-left focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none" onclick={() => toggleSort('id')}>
         ID
-        <ArrowUpDown class={['size-3', sortField === 'id' ? 'text-foreground' : 'text-muted-foreground/50']} />
+        <ArrowUpDown class={['size-3', sortField === 'id' ? 'text-foreground' : 'text-muted-foreground']} />
       </button>
     </div>
     <div role="columnheader" aria-sort={ariaSort('title')} class="flex">
       <button class="flex items-center gap-1 rounded-sm text-left focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none" onclick={() => toggleSort('title')}>
         Task
-        <ArrowUpDown class={['size-3', sortField === 'title' ? 'text-foreground' : 'text-muted-foreground/50']} />
+        <ArrowUpDown class={['size-3', sortField === 'title' ? 'text-foreground' : 'text-muted-foreground']} />
       </button>
     </div>
     <div role="columnheader" aria-sort={ariaSort('status')} class="flex">
       <button class="flex items-center gap-1 rounded-sm text-left focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none" onclick={() => toggleSort('status')}>
         Status
-        <ArrowUpDown class={['size-3', sortField === 'status' ? 'text-foreground' : 'text-muted-foreground/50']} />
+        <ArrowUpDown class={['size-3', sortField === 'status' ? 'text-foreground' : 'text-muted-foreground']} />
       </button>
     </div>
     <div role="columnheader" aria-sort={ariaSort('priority')} class="flex">
       <button class="flex items-center gap-1 rounded-sm text-left focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none" onclick={() => toggleSort('priority')}>
         Priority
-        <ArrowUpDown class={['size-3', sortField === 'priority' ? 'text-foreground' : 'text-muted-foreground/50']} />
+        <ArrowUpDown class={['size-3', sortField === 'priority' ? 'text-foreground' : 'text-muted-foreground']} />
       </button>
     </div>
     <div role="columnheader" aria-sort={ariaSort('assignee')} class="flex">
       <button class="flex items-center gap-1 rounded-sm text-left focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none" onclick={() => toggleSort('assignee')}>
         Assignee
-        <ArrowUpDown class={['size-3', sortField === 'assignee' ? 'text-foreground' : 'text-muted-foreground/50']} />
+        <ArrowUpDown class={['size-3', sortField === 'assignee' ? 'text-foreground' : 'text-muted-foreground']} />
       </button>
     </div>
     <div role="columnheader" aria-sort={ariaSort('dueDate')} class="flex">
       <button class="flex items-center gap-1 rounded-sm text-left focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none" onclick={() => toggleSort('dueDate')}>
         Due
-        <ArrowUpDown class={['size-3', sortField === 'dueDate' ? 'text-foreground' : 'text-muted-foreground/50']} />
+        <ArrowUpDown class={['size-3', sortField === 'dueDate' ? 'text-foreground' : 'text-muted-foreground']} />
       </button>
     </div>
     <span class="text-center">Info</span>
@@ -270,7 +270,7 @@
               {#if item.task.dueDate}
                 <DueDateBadge dueDate={item.task.dueDate} variant="chip" />
               {:else}
-                <span class="text-muted-foreground/50 text-xs">—</span>
+                <span class="text-muted-foreground text-xs">—</span>
               {/if}
             </div>
 
@@ -279,7 +279,7 @@
                 {#if item.task.commentItems.length}
                   <Tooltip>
                     <TooltipTrigger>
-                      <span class="text-muted-foreground/70 flex items-center gap-0.5 text-xs tabular-nums">
+                      <span class="text-muted-foreground flex items-center gap-0.5 text-xs tabular-nums">
                         <MessageSquare class="size-3" />
                         {item.task.commentItems.length}
                       </span>
@@ -290,7 +290,7 @@
                 {#if item.task.fileItems.length}
                   <Tooltip>
                     <TooltipTrigger>
-                      <span class="text-muted-foreground/70 flex items-center gap-0.5 text-xs tabular-nums">
+                      <span class="text-muted-foreground flex items-center gap-0.5 text-xs tabular-nums">
                         <Paperclip class="size-3" />
                         {item.task.fileItems.length}
                       </span>

@@ -10,7 +10,7 @@
 
   let { priority, iconSize = 'size-3.5', class: className }: PriorityBadgeProps = $props()
 
-  const config = $derived(priorityConfig[priority])
+  const config = $derived(priorityConfig[priority as keyof typeof priorityConfig])
 </script>
 
 {#if config}

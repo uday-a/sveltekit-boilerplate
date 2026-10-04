@@ -4,6 +4,7 @@
   import SubtaskProgress from './SubtaskProgress.svelte'
   import DueDateBadge from './DueDateBadge.svelte'
   import UserAvatar from './UserAvatar.svelte'
+  import PriorityBadge from './PriorityBadge.svelte'
   import KanbanLink from './KanbanLink.svelte'
   import { Button } from '$lib/components/ui/button'
   import {
@@ -34,42 +35,37 @@
 
   // Screen-reader name: title first, then status + priority for context.
   const ariaLabel = $derived(
-    [task.title, getTaskColumn(columns, task.id)?.title, `${priorityConfig[task.priority]?.label ?? task.priority} priority`]
+    [task.title, getTaskColumn(columns, task.id)?.title, `${priorityConfig[task.priority].label} priority`]
       .filter(Boolean)
       .join(', '),
   )
 </script>
 
+<!-- Not a button itself: the title is the card's one button, stretched
+     over the card with `after:inset-0`; the menu and avatar sit above it. -->
 <div
   data-slot="kanban-board"
   data-task-id={task.id}
   class={[
-    'kanban-card group/card bg-card relative cursor-grab rounded-lg border p-3 transition-colors duration-150',
+    'animate-in fade-in-0 slide-in-from-bottom-1.5 duration-200 group/card bg-card relative cursor-grab rounded-lg border p-3 transition-all',
     'hover:border-border hover:shadow-md active:scale-[0.97] active:cursor-grabbing',
-    'focus-visible:border-ring focus-visible:ring-ring/50 outline-none focus-visible:ring-[3px]',
-    isDone ? 'opacity-75 hover:opacity-100 focus-visible:opacity-100' : '',
   ]}
-  onclick={() => onClick?.(task)}
-  onkeydown={(e) => {
-    if (e.key === 'Enter' || e.key === ' ') {
-      e.preventDefault()
-      onClick?.(task)
-    }
-  }}
-  role="button"
-  tabindex="0"
-  aria-label={ariaLabel}
 >
   <div
     class={[
-      'kanban-accent absolute top-3 bottom-3 left-0 w-[0.09375rem] rounded-full transition-colors duration-150',
-      priorityConfig[task.priority]?.bg,
+      'absolute top-3 bottom-3 left-0 w-[1.5px] rounded-full transition-all duration-150',
+      priorityConfig[task.priority].bg,
       task.priority === 'low' ? 'opacity-40' : task.priority === 'medium' ? 'opacity-60' : 'opacity-90',
     ]}
   ></div>
 
   <div class="mb-1 flex items-center justify-between pl-2">
-    <span class="text-muted-foreground/70 font-mono text-xs">{task.id}</span>
+    <div class="flex items-center gap-2">
+      <span class="text-muted-foreground font-mono text-xs">{task.id}</span>
+      {#if task.priority === 'urgent' || task.priority === 'high'}
+        <PriorityBadge priority={task.priority} />
+      {/if}
+    </div>
     <DropdownMenu>
       <DropdownMenuTrigger>
         {#snippet child({ props })}
@@ -78,25 +74,16 @@
             variant="ghost"
             size="icon"
             {...props}
-            class="text-muted-foreground -mr-1 size-6 opacity-0 transition-opacity group-focus-within/card:opacity-100 group-hover/card:opacity-100 data-[state=open]:opacity-100"
-            onclick={(e: MouseEvent) => {
-              e.stopPropagation()
-              ;(props.onclick as ((e: MouseEvent) => void) | undefined)?.(e)
-            }}
+            class="text-muted-foreground relative z-10 -mr-1 size-6 opacity-0 transition-opacity group-focus-within/card:opacity-100 group-hover/card:opacity-100 data-[state=open]:opacity-100"
           >
             <MoreHorizontal class="size-3.5" aria-hidden="true" />
           </Button>
         {/snippet}
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" class="w-36">
-        <DropdownMenuItem
-          onclick={(e) => {
-            e.stopPropagation()
-            onQuickView?.(task)
-          }}>Quick view</DropdownMenuItem
-        >
+        <DropdownMenuItem onclick={() => onQuickView?.(task)}>Quick view</DropdownMenuItem>
         <DropdownMenuItem>
-          <KanbanLink href="/dashboard/kanban/{task.id}" to="/dashboard/kanban/{task.id}" class="flex items-center gap-2">
+          <KanbanLink href="/dashboard/kanban/{task.id}" class="flex w-full items-center gap-2">
             <ExternalLink class="size-3.5" />
             Open detail
           </KanbanLink>
@@ -110,9 +97,19 @@
     </DropdownMenu>
   </div>
 
-  <p class={['mb-2 pl-2 text-sm leading-snug font-medium', isDone ? 'decoration-muted-foreground/40 line-through' : '']}>
+  <button
+    type="button"
+    data-card-title
+    aria-label={ariaLabel}
+    class={[
+      'mb-2 block w-full cursor-[inherit] pl-2 text-left text-sm leading-snug font-medium outline-none',
+      'after:absolute after:inset-0 after:rounded-lg focus-visible:after:ring-[3px] focus-visible:after:ring-ring/50',
+      isDone ? 'decoration-muted-foreground/40 line-through' : '',
+    ]}
+    onclick={() => onClick?.(task)}
+  >
     {task.title}
-  </p>
+  </button>
 
   {#if task.tags.length}
     <div class="mb-2 flex flex-wrap gap-1 pl-2">
@@ -134,20 +131,20 @@
     {/if}
 
     {#if task.commentItems.length}
-      <div class="text-muted-foreground/70 flex items-center gap-1 text-xs tabular-nums">
+      <div class="text-muted-foreground flex items-center gap-1 text-xs tabular-nums">
         <MessageSquare class="size-3" />
         {task.commentItems.length}
       </div>
     {/if}
 
     {#if task.fileItems.length}
-      <div class="text-muted-foreground/70 flex items-center gap-1 text-xs tabular-nums">
+      <div class="text-muted-foreground flex items-center gap-1 text-xs tabular-nums">
         <Paperclip class="size-3" />
         {task.fileItems.length}
       </div>
     {/if}
 
-    <div class="ml-auto">
+    <div class="relative z-10 ml-auto">
       <TooltipProvider delayDuration={200}>
         <Tooltip>
           <TooltipTrigger>
@@ -159,18 +156,3 @@
     </div>
   </div>
 </div>
-
-<style>
-  .kanban-card {
-    animation: card-in 0.25s ease-out both;
-  }
-  @keyframes card-in {
-    from {
-      opacity: 0;
-      transform: translateY(6px);
-    }
-  }
-  .kanban-card:hover .kanban-accent {
-    box-shadow: 0 0 3px currentColor;
-  }
-</style>

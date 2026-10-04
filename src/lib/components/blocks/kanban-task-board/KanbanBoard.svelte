@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from 'svelte'
+  import { onMount, untrack } from 'svelte'
   import { SvelteSet } from 'svelte/reactivity'
   import type { Component } from 'svelte'
   import { toast } from 'svelte-sonner'
@@ -24,6 +24,10 @@
     hideToolbar?: boolean
     lockParentScroll?: boolean
     linkComponent?: string | Component<any>
+    /** Deep-link: open this task's sheet (e.g. from `/dashboard/kanban/<id>`). */
+    taskId?: string | null
+    /** Called when the user closes a sheet that was opened via `taskId`. */
+    onTaskClose?: () => void
     onColumnsChange?: (columns: KanbanColumnType[]) => void
   }
 
@@ -36,6 +40,8 @@
     hideToolbar = false,
     lockParentScroll = true,
     linkComponent = 'a',
+    taskId = null,
+    onTaskClose,
     onColumnsChange,
   }: KanbanBoardProps = $props()
 
@@ -108,7 +114,7 @@
     task.commentItems.push({
       id: `c${Date.now()}`,
       author: 'Admin User',
-      authorColor: 'bg-chart-1/15 text-chart-1',
+      authorColor: 'bg-muted text-muted-foreground',
       text,
       time: 'Just now',
     })
@@ -134,6 +140,20 @@
   function openTaskDetail(task: KanbanTask) {
     detailTask = task
     detailOpen = true
+  }
+
+  // Deep link: open the routed task's sheet whenever `taskId` changes.
+  $effect(() => {
+    const id = taskId
+    if (!id) return
+    untrack(() => {
+      const task = columns.flatMap((c) => c.tasks).find((t) => t.id === id)
+      if (task) openTaskDetail(task)
+    })
+  })
+
+  function onSheetOpenChange(open: boolean) {
+    if (!open && taskId) onTaskClose?.()
   }
 
   let draggedTask = $state<string | null>(null)
@@ -237,7 +257,7 @@
 <div
   bind:this={kanbanEl}
   data-slot="kanban-board"
-  class="kanban-page flex h-[calc(100dvh-3.5rem-2rem)] flex-col overflow-hidden"
+  class="flex h-[calc(100dvh-3.5rem-2rem)] flex-col overflow-hidden"
 >
   {#if !hideHeader}
     <div class="mb-4 shrink-0">
@@ -245,10 +265,10 @@
         <PageHeaderHeading title={title ?? ''} description={description ?? ''} />
         {#snippet actions()}
           <div class="flex shrink-0 items-center gap-2">
-            <Badge variant="secondary" class="font-mono text-xs tabular-nums">{totalTasks} tasks</Badge>
+            <Badge variant="secondary" class="tabular-nums">{totalTasks} tasks</Badge>
             <Button size="sm" onclick={() => openAddTask(defaultColumnId)}>
-              <Plus class="size-4" />
-              Add Task
+              <Plus class="size-4" aria-hidden="true" />
+              Add task
             </Button>
           </div>
         {/snippet}
@@ -266,7 +286,7 @@
   {/if}
 
   {#if viewMode === 'board'}
-    <div class="kanban-board relative flex min-h-0 flex-1 items-start gap-3 overflow-auto pb-3">
+    <div class="relative flex min-h-0 flex-1 items-start gap-3 overflow-x-auto overflow-y-hidden pb-3 [scrollbar-color:var(--border)_transparent] [scrollbar-width:thin]">
       {#each filteredColumns as column (column.id)}
         <KanbanColumn
           {column}
@@ -302,6 +322,7 @@
     columns={columns}
     onMoveTask={moveTask}
     onAddComment={addComment}
+    onOpenChange={onSheetOpenChange}
   />
 
   <KanbanAddTaskDialog
@@ -311,21 +332,3 @@
     onCreate={onCreateTask}
   />
 </div>
-
-<style>
-  .kanban-board {
-    scrollbar-width: thin;
-    scrollbar-color: hsl(var(--border)) transparent;
-  }
-  .kanban-board::-webkit-scrollbar {
-    height: 6px;
-    width: 6px;
-  }
-  .kanban-board::-webkit-scrollbar-thumb {
-    background-color: hsl(var(--border));
-    border-radius: 3px;
-  }
-  .kanban-board::-webkit-scrollbar-corner {
-    background: transparent;
-  }
-</style>

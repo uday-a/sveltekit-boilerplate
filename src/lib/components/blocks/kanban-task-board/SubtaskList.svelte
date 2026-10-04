@@ -53,7 +53,7 @@
           ].join(' ')}
         >
           <span class={['size-1.5 shrink-0 rounded-full', column?.dotColor ?? 'bg-muted-foreground']}></span>
-          <span class="text-muted-foreground/70 shrink-0 font-mono text-xs">
+          <span class="text-muted-foreground shrink-0 font-mono text-xs">
             {task.id}
           </span>
           <span

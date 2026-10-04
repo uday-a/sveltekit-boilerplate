@@ -41,11 +41,9 @@
   const DeltaIcon = $derived(deltaDown ? TrendingDown : TrendingUp)
 </script>
 
-<!-- The app's one stat tile. The KPI strips (dashboard, activity,
-     locations, ui-kit) use this so label, number and delta read the same
-     everywhere. The calendar's type tiles are filter buttons, so they keep
-     their own markup but apply the same eyebrow and metric roles. Port of
-     Nuxt `StatTile.vue`. -->
+<!-- The app's one stat tile. Every KPI strip (dashboard, calendar,
+     activity, locations) uses this so label, number and delta read the
+     same everywhere. Port of Nuxt `StatTile.vue`. -->
 <Card class={['flex flex-col', className]} data-slot="stat-tile">
   <CardHeader class="px-4 pt-4 pb-1">
     <CardDescription class="text-muted-foreground flex items-center justify-between gap-2 text-xs font-medium tracking-wider uppercase">
@@ -53,7 +51,7 @@
         {#if dotClass}
           <span class={['size-2 shrink-0 rounded-full', dotClass]} aria-hidden="true"></span>
         {/if}
-        <span class="truncate">{label}</span>
+        <span class="truncate" title={label}>{label}</span>
         {#if definition}
           <TooltipProvider>
             <Tooltip>

@@ -13,8 +13,13 @@
   import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '$lib/components/ui/card'
   import { Input } from '$lib/components/ui/input'
   import { Button } from '$lib/components/ui/button'
-  import { Page, PageHeader, PageHeaderHeading } from '$lib/components/ui/page'
+  import { Page, PageHeader, PageHeaderHeading, PageBody } from '$lib/components/ui/page'
+  import { page } from '$app/state'
+  import { routeLabel } from '$lib/breadcrumb-labels'
+  import { t } from '$lib/i18n'
   import FieldTextarea from './FieldTextarea.svelte'
+
+  const title = $derived(routeLabel(page.url.pathname, $t))
 
   // Port of nuxt `app/pages/dashboard/form-example.vue`.
   //
@@ -61,94 +66,101 @@
 </script>
 
 <svelte:head>
-  <title>Validated form · Example | UIPKGE</title>
+  <title>{title} | UIPKGE</title>
 </svelte:head>
 
-<Page class="max-w-3xl">
+<Page>
   <PageHeader>
-    <PageHeaderHeading
-      title="Validated form"
-      description="Reference pattern. zod schema + TanStack Form + registry &lt;Form&gt; components."
-    />
+    <PageHeaderHeading {title} description="A profile form that checks every field before it saves." />
   </PageHeader>
 
-  <Card>
-    <CardHeader>
-      <CardTitle class="text-base">Profile</CardTitle>
-      <CardDescription>Validates on submit. Edit and click Save.</CardDescription>
-    </CardHeader>
-    <CardContent>
-      <Form {form} class="space-y-4">
-        <FormField name="name">
-          {#snippet children({ field })}
-            <FormItem>
-              <FormLabel>Name</FormLabel>
-              <FormControl>
-                {#snippet children(props)}
-                  <Input
-                    name={field.name}
-                    value={(field.state.value as string) ?? ''}
-                    onValueChange={(v) => field.handleChange(v)}
-                    id={props.id}
-                    aria-invalid={props['aria-invalid']}
-                    aria-describedby={props['aria-describedby']}
-                  />
-                {/snippet}
-              </FormControl>
-              <FormDescription>Shown to other workspace members.</FormDescription>
-              <FormMessage />
-            </FormItem>
-          {/snippet}
-        </FormField>
+  <PageBody class="max-w-3xl space-y-4">
 
-        <FormField name="email">
-          {#snippet children({ field })}
-            <FormItem>
-              <FormLabel>Email</FormLabel>
-              <FormControl>
-                {#snippet children(props)}
-                  <Input
-                    name={field.name}
-                    value={(field.state.value as string) ?? ''}
-                    onValueChange={(v) => field.handleChange(v)}
-                    id={props.id}
-                    aria-invalid={props['aria-invalid']}
-                    aria-describedby={props['aria-describedby']}
-                    type="email"
-                  />
-                {/snippet}
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          {/snippet}
-        </FormField>
-
-        <FormField name="bio">
-          {#snippet children({ field })}
-            <FormItem>
-              <FormLabel>Bio</FormLabel>
-              <FieldTextarea {field} rows={3} />
-              <FormDescription>280 characters max.</FormDescription>
-              <FormMessage />
-            </FormItem>
-          {/snippet}
-        </FormField>
-
-        <div class="flex justify-end">
-          <Button type="submit">Save</Button>
-        </div>
-      </Form>
-    </CardContent>
-  </Card>
-
-  {#if submitted}
     <Card>
       <CardHeader>
-        <CardTitle class="text-base">Submitted value</CardTitle>
+        <CardTitle class="text-base">Profile</CardTitle>
+        <CardDescription>Validates on submit. Edit and click Save.</CardDescription>
       </CardHeader>
       <CardContent>
-        <pre class="bg-muted rounded-md p-3 text-xs"><code>{JSON.stringify(submitted, null, 2)}</code></pre>
+        <Form {form} class="space-y-4">
+          <FormField name="name">
+            {#snippet children({ field })}
+              <FormItem>
+                <FormLabel>Name</FormLabel>
+                <FormControl>
+                  {#snippet children(props)}
+                    <Input
+                      name={field.name}
+                      value={(field.state.value as string) ?? ''}
+                      onValueChange={(v) => field.handleChange(v)}
+                      id={props.id}
+                      aria-invalid={props['aria-invalid']}
+                      aria-describedby={props['aria-describedby']}
+                    />
+                  {/snippet}
+                </FormControl>
+                <FormDescription>Shown to other workspace members.</FormDescription>
+                <FormMessage />
+              </FormItem>
+            {/snippet}
+          </FormField>
+
+          <FormField name="email">
+            {#snippet children({ field })}
+              <FormItem>
+                <FormLabel>Email</FormLabel>
+                <FormControl>
+                  {#snippet children(props)}
+                    <Input
+                      name={field.name}
+                      value={(field.state.value as string) ?? ''}
+                      onValueChange={(v) => field.handleChange(v)}
+                      id={props.id}
+                      aria-invalid={props['aria-invalid']}
+                      aria-describedby={props['aria-describedby']}
+                      type="email"
+                    />
+                  {/snippet}
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            {/snippet}
+          </FormField>
+
+          <FormField name="bio">
+            {#snippet children({ field })}
+              <FormItem>
+                <FormLabel>Bio</FormLabel>
+                <FieldTextarea {field} rows={3} />
+                <FormDescription>280 characters max.</FormDescription>
+                <FormMessage />
+              </FormItem>
+            {/snippet}
+          </FormField>
+
+          <div class="flex justify-end">
+            <Button type="submit">Save</Button>
+          </div>
+        </Form>
       </CardContent>
     </Card>
-  {/if}
+
+    {#if submitted}
+      <Card>
+        <CardHeader>
+          <CardTitle class="text-base">Saved profile</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <dl class="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
+            <dt class="text-muted-foreground">Name</dt>
+            <dd>{submitted.name}</dd>
+            <dt class="text-muted-foreground">Email</dt>
+            <dd>{submitted.email}</dd>
+            <dt class="text-muted-foreground">Bio</dt>
+            <dd>{submitted.bio || '—'}</dd>
+          </dl>
+        </CardContent>
+      </Card>
+    {/if}
+  </PageBody>
 </Page>

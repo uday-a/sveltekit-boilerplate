@@ -20,8 +20,8 @@ export interface KanbanTask {
   title: string
   description?: string
   priority: 'low' | 'medium' | 'high' | 'urgent'
-  assignee: { name: string; color: string }
-  tags: { label: string; color: string }[]
+  assignee: { name: string, color: string }
+  tags: { label: string, color: string }[]
   dueDate?: string
   parentId?: string
   subtaskIds: string[]
@@ -37,35 +37,38 @@ export interface KanbanColumn {
   tasks: KanbanTask[]
 }
 
-export const priorityConfig: Record<string, { icon: any; class: string; label: string; bg: string }> = {
+// Keyed by the priority union from KanbanTask so indexed access returns
+// the entry type directly under noUncheckedIndexedAccess.
+// `bg` drives the card's left accent: only urgent/high get a status color,
+// medium/low stay neutral so the board reads calm.
+export const priorityConfig: Record<KanbanTask['priority'], { icon: any, class: string, label: string, bg: string }> = {
   urgent: { icon: CircleAlert, class: 'text-destructive', label: 'Urgent', bg: 'bg-destructive' },
   high: { icon: ArrowUp, class: 'text-warning', label: 'High', bg: 'bg-warning' },
-  medium: { icon: Minus, class: 'text-info', label: 'Medium', bg: 'bg-info' },
-  low: { icon: ArrowDown, class: 'text-muted-foreground', label: 'Low', bg: 'bg-muted-foreground' },
+  medium: { icon: Minus, class: 'text-muted-foreground', label: 'Medium', bg: 'bg-muted-foreground' },
+  low: { icon: ArrowDown, class: 'text-muted-foreground', label: 'Low', bg: 'bg-border' },
 }
 
-// Avatar tints are a fixed pick from chart-1..5 (house rule: categories use
-// chart tokens). Six people, five hues, so Carol and Frank share chart-2.
+// Avatar tints: a fixed pick from the chart-N/15 set (see design rules).
 export const assignees = {
-  alice: { name: 'Alice Chen', color: 'bg-chart-3/15 text-chart-3' },
-  bob: { name: 'Bob Martinez', color: 'bg-chart-1/15 text-chart-1' },
-  carol: { name: 'Carol White', color: 'bg-chart-2/15 text-chart-2' },
+  alice: { name: 'Alice Chen', color: 'bg-chart-1/15 text-chart-1' },
+  bob: { name: 'Bob Martinez', color: 'bg-chart-2/15 text-chart-2' },
+  carol: { name: 'Carol White', color: 'bg-chart-3/15 text-chart-3' },
   david: { name: 'David Kim', color: 'bg-chart-4/15 text-chart-4' },
   eva: { name: 'Eva Johnson', color: 'bg-chart-5/15 text-chart-5' },
-  frank: { name: 'Frank Lee', color: 'bg-chart-2/15 text-chart-2' },
+  frank: { name: 'Frank Lee', color: 'bg-muted text-muted-foreground' },
 }
 
+// Tags are labels, not status — keep them neutral.
+const tagColor = 'bg-muted text-muted-foreground ring-border'
+
 export const tagPresets = {
-  onboarding: { label: 'Onboarding', color: 'bg-chart-1/10 text-chart-1 ring-chart-1/20' },
-  compliance: { label: 'Compliance', color: 'bg-chart-3/10 text-chart-3 ring-chart-3/20' },
-  recruitment: {
-    label: 'Recruitment',
-    color: 'bg-chart-4/10 text-chart-4 ring-chart-4/20',
-  },
-  payroll: { label: 'Payroll', color: 'bg-chart-2/10 text-chart-2 ring-chart-2/20' },
-  training: { label: 'Training', color: 'bg-chart-5/10 text-chart-5 ring-chart-5/20' },
-  benefits: { label: 'Benefits', color: 'bg-chart-1/10 text-chart-1 ring-chart-1/20' },
-  policy: { label: 'Policy', color: 'bg-muted text-muted-foreground ring-border' },
+  release: { label: 'Release', color: tagColor },
+  bug: { label: 'Bug', color: tagColor },
+  docs: { label: 'Docs', color: tagColor },
+  customer: { label: 'Customer', color: tagColor },
+  infra: { label: 'Infra', color: tagColor },
+  security: { label: 'Security', color: tagColor },
+  design: { label: 'Design', color: tagColor },
 }
 
 export const fileIconMap: Record<string, any> = {
@@ -78,7 +81,7 @@ export const fileIconMap: Record<string, any> = {
 export function getInitials(name: string) {
   return name
     .split(' ')
-    .map((n) => n[0])
+    .map(n => n[0])
     .join('')
     .toUpperCase()
 }
@@ -107,12 +110,12 @@ export function getAssigneeKey(name: string): keyof typeof assignees {
 
 export function findTaskById(columns: KanbanColumn[], taskId: string): KanbanTask | undefined {
   for (const col of columns) {
-    const task = col.tasks.find((t) => t.id === taskId)
+    const task = col.tasks.find(t => t.id === taskId)
     if (task) return task
   }
   return undefined
 }
 
 export function getTaskColumn(columns: KanbanColumn[], taskId: string): KanbanColumn | undefined {
-  return columns.find((col) => col.tasks.some((t) => t.id === taskId))
+  return columns.find(col => col.tasks.some(t => t.id === taskId))
 }

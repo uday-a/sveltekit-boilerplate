@@ -34,7 +34,10 @@
     if (parts.length === 0) return [{ label: $t('nav.items.dashboard') }]
     return parts.map((_, i) => {
       const path = '/' + parts.slice(0, i + 1).join('/')
-      return { label: routeLabel(path, $t), href: i < parts.length - 1 ? path : undefined }
+      const last = i === parts.length - 1
+      // A page can name its own last crumb (e.g. a task title) via `crumb` in its load.
+      const label = last && typeof page.data.crumb === 'string' ? page.data.crumb : routeLabel(path, $t)
+      return { label, href: last ? undefined : path }
     })
   })
 
