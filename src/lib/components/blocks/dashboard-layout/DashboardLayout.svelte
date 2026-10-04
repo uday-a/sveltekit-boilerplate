@@ -69,19 +69,19 @@
     <header
       class="bg-background sticky top-0 z-30 flex h-14 w-full shrink-0 items-center justify-between border-b px-4 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12"
     >
-      <div class="flex items-center gap-2">
+      <div class="flex min-w-0 items-center gap-2">
         <SidebarTrigger class="-ml-1" />
         <Separator orientation="vertical" class="mr-2 h-4" />
-        <Breadcrumb>
-          <BreadcrumbList>
+        <Breadcrumb class="min-w-0">
+          <BreadcrumbList class="flex-nowrap">
             {#each breadcrumbs as crumb, i (i)}
-              <BreadcrumbItem class={i === 0 ? 'hidden md:block' : ''}>
+              <BreadcrumbItem class={i === 0 ? 'hidden md:block' : 'min-w-0'}>
                 {#if crumb.href && i < breadcrumbs.length - 1}
                   <BreadcrumbLink href={crumb.href} class="text-muted-foreground/70 hover:text-foreground transition-colors">
                     {crumb.label}
                   </BreadcrumbLink>
                 {:else}
-                  <BreadcrumbPage class="font-medium">{crumb.label}</BreadcrumbPage>
+                  <BreadcrumbPage class="block truncate font-medium">{crumb.label}</BreadcrumbPage>
                 {/if}
               </BreadcrumbItem>
               {#if i < breadcrumbs.length - 1}
