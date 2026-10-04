@@ -259,25 +259,28 @@
       {/each}
     </ul>
   {/if}
-  <table class="sr-only">
-    <caption>Conversion funnel by stage</caption>
-    <thead>
-      <tr>
-        <th scope="col">Stage</th>
-        <th scope="col">Count</th>
-        <th scope="col">Step rate</th>
-        <th scope="col">Cumulative</th>
-      </tr>
-    </thead>
-    <tbody>
-      {#each stats.steps as s, i (`${s.name}-${i}`)}
+  <!-- sr-only on a wrapper: a sr-only <table> still widens narrow layouts. -->
+  <div class="sr-only">
+    <table>
+      <caption>Conversion funnel by stage</caption>
+      <thead>
         <tr>
-          <th scope="row">{s.name}</th>
-          <td>{s.value.toLocaleString()}</td>
-          <td>{s.stepRate === null ? '100% baseline' : `${formatPct(s.stepRate)} from ${s.prevName}`}</td>
-          <td>{formatPct(s.cumulative)} of top</td>
+          <th scope="col">Stage</th>
+          <th scope="col">Count</th>
+          <th scope="col">Step rate</th>
+          <th scope="col">Cumulative</th>
         </tr>
-      {/each}
-    </tbody>
-  </table>
+      </thead>
+      <tbody>
+        {#each stats.steps as s, i (`${s.name}-${i}`)}
+          <tr>
+            <th scope="row">{s.name}</th>
+            <td>{s.value.toLocaleString()}</td>
+            <td>{s.stepRate === null ? '100% baseline' : `${formatPct(s.stepRate)} from ${s.prevName}`}</td>
+            <td>{formatPct(s.cumulative)} of top</td>
+          </tr>
+        {/each}
+      </tbody>
+    </table>
+  </div>
 </div>

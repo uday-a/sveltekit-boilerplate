@@ -40,6 +40,11 @@
     ref = contentEl
   })
 
+  let mounted = $state(false)
+  $effect(() => {
+    mounted = true
+  })
+
   function place() {
     const trigger = ctx.triggerEl
     if (!trigger) return
@@ -144,6 +149,15 @@
       },
     }
   }
+
+  function offDocument(node: HTMLElement) {
+    document.createDocumentFragment().appendChild(node)
+    return {
+      destroy() {
+        node.remove()
+      },
+    }
+  }
 </script>
 
 {#if ctx.open}
@@ -176,4 +190,11 @@
       </div>
       <SelectScrollDownButton />
     </div>
+{:else if mounted}
+  <!-- Closed: still mount the items, off-document, so they register their
+    labels and SelectValue can show the selected one (reka-ui does the same).
+    Client-only, like reka-ui: SelectItem uses CSS.escape, absent in SSR. -->
+  <div hidden use:offDocument>
+    {@render children?.()}
+  </div>
 {/if}
