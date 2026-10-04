@@ -253,12 +253,15 @@
                           {$t(`dashboard.locations.kind.${office.kind}`)}
                         </Badge>
                       </span>
-                      <span class="text-muted-foreground flex items-center gap-1.5 truncate text-xs">
-                        {office.country}
+                      <!-- Wraps (country, then clock + time as one unit) instead of truncating. -->
+                      <span class="text-muted-foreground flex flex-wrap items-center gap-x-1.5 text-xs">
+                        <span>{office.country}</span>
                         {#if localTime(office.timezone)}
-                          <span aria-hidden="true">·</span>
-                          <Clock class="size-3.5 shrink-0" aria-hidden="true" />
-                          <span class="tabular-nums">{localTime(office.timezone)}</span>
+                          <span class="inline-flex items-center gap-1.5">
+                            <span aria-hidden="true">·</span>
+                            <Clock class="size-3.5 shrink-0" aria-hidden="true" />
+                            <span class="tabular-nums">{localTime(office.timezone)}</span>
+                          </span>
                         {/if}
                       </span>
                     </span>
