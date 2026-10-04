@@ -31,7 +31,7 @@ const LOGOS = [
 
   <section data-slot="logos-01" class="bg-muted/30 border-y">
     <div class="mx-auto max-w-6xl px-6 py-14">
-      <p class="text-muted-foreground text-center text-xs font-medium tracking-widest uppercase">Trusted by teams at</p>
+      <p class="text-muted-foreground text-center text-xs font-medium tracking-wider uppercase">Trusted by teams at</p>
       <div
         class="mt-10 grid grid-cols-2 items-center justify-items-center gap-x-10 gap-y-8 sm:grid-cols-3 lg:grid-cols-6"
       >

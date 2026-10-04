@@ -2,8 +2,11 @@
   import { Boxes, Menu, X } from '@lucide/svelte'
   import { Button } from '$lib/components/ui/button'
   import { Sheet, SheetContent, SheetTrigger } from '$lib/components/ui/sheet'
+  import { page } from '$app/state'
 
   let mobileOpen = $state(false)
+  // Root layout exposes the session as `data.user` (Next fetches /api/me).
+  const loggedIn = $derived(!!page.data.user)
 </script>
 
 <header
@@ -11,8 +14,7 @@
   class="bg-background/80 supports-[backdrop-filter]:bg-background/60 sticky top-0 z-40 border-b backdrop-blur"
 >
   <div class="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
-    <!-- svelte-ignore a11y_invalid_attribute: placeholder brand href mirrors the Vue twin; point it at a real route. -->
-    <a href="#" class="flex items-center gap-2">
+    <a href="/" class="flex items-center gap-2">
       <div class="bg-primary text-primary-foreground flex size-8 items-center justify-center rounded-md">
         <Boxes class="size-4" />
       </div>
@@ -28,14 +30,24 @@
     </nav>
 
     <div class="hidden items-center gap-2 md:flex">
-      <Button variant="ghost" size="sm">Sign in</Button>
-      <Button size="sm">Start free trial</Button>
+      {#if loggedIn}
+        <Button size="sm">
+          {#snippet child({ props })}<a href="/dashboard" {...props}>Go to dashboard</a>{/snippet}
+        </Button>
+      {:else}
+        <Button variant="ghost" size="sm">
+          {#snippet child({ props })}<a href="/login" {...props}>Sign in</a>{/snippet}
+        </Button>
+        <Button size="sm">
+          {#snippet child({ props })}<a href="/sign-up" {...props}>Start free trial</a>{/snippet}
+        </Button>
+      {/if}
     </div>
 
     <Sheet bind:open={mobileOpen}>
       <SheetTrigger>
         {#snippet child({ props })}
-          <Button variant="ghost" size="icon" class="md:hidden" aria-label="Open menu" {...props}>
+          <Button {...props} variant="ghost" size="icon" class="md:hidden" aria-label="Open menu">
             <Menu class="size-5" />
           </Button>
         {/snippet}
@@ -92,8 +104,24 @@
             >
           </nav>
           <div class="flex flex-col gap-2 border-t p-4">
-            <Button variant="outline" class="w-full">Sign in</Button>
-            <Button class="w-full">Start free trial</Button>
+            {#if loggedIn}
+              <Button class="w-full">
+                {#snippet child({ props })}
+                  <a href="/dashboard" {...props} onclick={() => (mobileOpen = false)}>Go to dashboard</a>
+                {/snippet}
+              </Button>
+            {:else}
+              <Button variant="outline" class="w-full">
+                {#snippet child({ props })}
+                  <a href="/login" {...props} onclick={() => (mobileOpen = false)}>Sign in</a>
+                {/snippet}
+              </Button>
+              <Button class="w-full">
+                {#snippet child({ props })}
+                  <a href="/sign-up" {...props} onclick={() => (mobileOpen = false)}>Start free trial</a>
+                {/snippet}
+              </Button>
+            {/if}
           </div>
         </div>
       </SheetContent>

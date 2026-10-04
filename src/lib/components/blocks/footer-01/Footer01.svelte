@@ -33,7 +33,7 @@
       <div class="space-y-4 lg:col-span-4">
         <div class="flex items-center gap-2">
           <div class="bg-primary text-primary-foreground flex size-8 items-center justify-center rounded-md">
-            <Boxes class="size-4" />
+            <Boxes class="size-4" aria-hidden="true" />
           </div>
           <span class="text-base font-semibold">Acme</span>
         </div>
