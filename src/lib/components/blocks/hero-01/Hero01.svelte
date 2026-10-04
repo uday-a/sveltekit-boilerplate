@@ -22,7 +22,7 @@
         </h1>
         <p class="text-muted-foreground max-w-xl text-lg">
           One workspace for everything your team needs. Built on shadcn-svelte primitives — fast, accessible, easy to
-          customise.
+          customize.
         </p>
         <div class="flex flex-wrap items-center gap-3">
           <Button size="lg">
