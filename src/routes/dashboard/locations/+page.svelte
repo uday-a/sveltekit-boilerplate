@@ -202,9 +202,11 @@
     </div>
 
     <!-- List + map -->
-    <div class="grid gap-4 lg:grid-cols-3">
+    <!-- List and map side by side only from xl (1280px) — below that the list
+         stacks full width above the map so city names never get cramped. -->
+    <div class="grid gap-4 xl:grid-cols-5">
       <!-- Location list -->
-      <Card>
+      <Card class="xl:col-span-2">
         <CardHeader>
           <div class="flex flex-col gap-2 sm:flex-row">
             <Input
@@ -292,7 +294,7 @@
 
       <!-- Large map: fills its card (no inner frame). LeafletMap loads
            Leaflet client-side only, so SSR renders just the shell. -->
-      <Card class="relative isolate overflow-hidden p-0 lg:col-span-2">
+      <Card class="relative isolate overflow-hidden p-0 xl:col-span-3">
         <LeafletMap
           bind:this={mapRef}
           variant="muted"
@@ -471,7 +473,8 @@
           <ul class="space-y-2.5">
             {#each topCustomers as c (c.id)}
               <li class="grid grid-cols-[7rem_1fr_auto] items-center gap-3 text-sm">
-                <span class="truncate font-medium" title={c.city}>{c.city}</span>
+                <!-- Long city names wrap within their column instead of truncating. -->
+                <span class="min-w-0 font-medium break-words">{c.city}</span>
                 <span class="bg-muted h-1.5 overflow-hidden rounded-full">
                   <span class="bg-chart-2 block h-full rounded-full" style:width={`${Math.round((c.arr / maxArr) * 100)}%`}></span>
                 </span>
