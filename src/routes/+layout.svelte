@@ -10,8 +10,13 @@
   import { initI18n } from '$lib/i18n'
   import { capturePageview, initPostHog, posthog } from '$lib/posthog'
   import { Toaster } from '$lib/components/ui/sonner'
+  import { DEFAULT_DESCRIPTION, PUBLIC_ROUTES, SITE_NAME, siteOrigin } from '$lib/seo'
 
   let { children } = $props()
+
+  const description = $derived(page.data.description ?? DEFAULT_DESCRIPTION)
+  const canonical = $derived(`${siteOrigin(publicEnv.PUBLIC_SITE_URL, page.url.origin)}${page.url.pathname}`)
+  const ogTitle = $derived(PUBLIC_ROUTES[page.url.pathname] ? `${PUBLIC_ROUTES[page.url.pathname]} | ${SITE_NAME}` : SITE_NAME)
 
   // i18n (nuxt `no_prefix` port): SSR renders `en`; the client hydrates the
   // stored locale from the `uipkge-locale` cookie. See $lib/i18n for the
@@ -43,14 +48,17 @@
   })
 </script>
 
-<!-- One description tag for every page (svelte:head doesn't dedupe): a page
+<!-- One set of SEO tags for every page (svelte:head doesn't dedupe): a page
      sets `description` from its load, otherwise the site default applies. -->
 <svelte:head>
-  <meta
-    name="description"
-    content={page.data.description ??
-      'SvelteKit 2 SaaS boilerplate — auth, database, billing, email, analytics, and observability baked in.'}
-  />
+  <meta name="description" content={description} />
+  <link rel="canonical" href={canonical} />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content={SITE_NAME} />
+  <meta property="og:title" content={ogTitle} />
+  <meta property="og:description" content={description} />
+  <meta property="og:url" content={canonical} />
+  <meta name="twitter:card" content="summary_large_image" />
 </svelte:head>
 
 {@render children()}
