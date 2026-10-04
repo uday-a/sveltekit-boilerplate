@@ -309,10 +309,8 @@
           <!-- HQ links: thin dashed lines to every office -->
           {#if showOffices}
             {#each filtered.filter(o => o.kind !== 'hq') as office (office.id)}
-              <!-- Wrapped as one ring: the primitive's toLatLngs misreads a flat
-                   [lng, lat][] path as rings (upstream bug, see report). -->
               <LeafletPolyline
-                lngLatPath={[arcPath(hq.lngLat, office.lngLat)]}
+                lngLatPath={arcPath(hq.lngLat, office.lngLat)}
                 color={chartTextColor()}
                 weight={1}
                 opacity={selectedId === office.id ? 0.9 : 0.35}
@@ -346,28 +344,30 @@
               onclick={() => onMarkerClick(office.id)}
               onready={marker => (markerById[office.id] = marker)}
             >
-              <!-- Staggered pop-in on load; HQ and the selected office pulse.
-                   WHY (Rule90/96): 200ms pop-in, and the pulse is gated with
-                   motion-safe so reduced-motion gets a static marker. -->
-              <span
-                class="animate-in fade-in-0 zoom-in-50 fill-mode-both relative flex items-center justify-center duration-200"
-                style:animation-delay={`${i * 70}ms`}
-              >
-                {#if office.kind === 'hq' || selectedId === office.id}
-                  <span
-                    class={['absolute inset-0 rounded-full opacity-40 motion-safe:animate-ping', kindDotBg(office.kind)]}
-                    aria-hidden="true"
-                  ></span>
-                {/if}
+              {#snippet icon()}
+                <!-- Staggered pop-in on load; HQ and the selected office pulse.
+                     WHY (Rule90/96): 200ms pop-in, and the pulse is gated with
+                     motion-safe so reduced-motion gets a static marker. -->
                 <span
-                  class={[
-                    'outline-background relative block rounded-full ring-4 outline-2 transition-transform duration-200 hover:scale-125',
-                    markerSizeClass(office.headcount),
-                    kindDotClass(office.kind),
-                    selectedId === office.id && 'scale-125',
-                  ]}
-                ></span>
-              </span>
+                  class="animate-in fade-in-0 zoom-in-50 fill-mode-both relative flex items-center justify-center duration-200"
+                  style:animation-delay={`${i * 70}ms`}
+                >
+                  {#if office.kind === 'hq' || selectedId === office.id}
+                    <span
+                      class={['absolute inset-0 rounded-full opacity-40 motion-safe:animate-ping', kindDotBg(office.kind)]}
+                      aria-hidden="true"
+                    ></span>
+                  {/if}
+                  <span
+                    class={[
+                      'outline-background relative block rounded-full ring-4 outline-2 transition-transform duration-200 hover:scale-125',
+                      markerSizeClass(office.headcount),
+                      kindDotClass(office.kind),
+                      selectedId === office.id && 'scale-125',
+                    ]}
+                  ></span>
+                </span>
+              {/snippet}
               <LeafletTooltip direction="top" offset={[0, -10]}>
                 <span class="text-xs font-medium">{office.city}</span>
               </LeafletTooltip>

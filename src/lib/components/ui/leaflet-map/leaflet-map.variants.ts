@@ -1,17 +1,17 @@
 import { cva, type VariantProps } from 'class-variance-authority'
 
-export type LeafletMapVariant
-  = | 'default'
-    | 'muted'
-    | 'streets'
-    | 'outdoors'
-    | 'light'
-    | 'dark'
-    | 'satellite'
-    | 'satellite-streets'
-    | 'navigation-day'
-    | 'navigation-night'
-    | 'standard'
+export type LeafletMapVariant =
+  | 'default'
+  | 'muted'
+  | 'streets'
+  | 'outdoors'
+  | 'light'
+  | 'dark'
+  | 'satellite'
+  | 'satellite-streets'
+  | 'navigation-day'
+  | 'navigation-night'
+  | 'standard'
 
 export interface LeafletTilePreset {
   /** Raster tile URL template ({z}/{x}/{y}, optional {s} subdomains + {r} retina). */
@@ -60,17 +60,17 @@ const ESRI_SATELLITE: LeafletTilePreset = {
 }
 
 export const LEAFLET_TILES: Record<Exclude<LeafletMapVariant, 'default' | 'muted'>, LeafletTilePreset> = {
-  'streets': OSM_STANDARD,
-  'standard': OSM_STANDARD,
-  'outdoors': {
+  streets: OSM_STANDARD,
+  standard: OSM_STANDARD,
+  outdoors: {
     url: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
     attribution: TOPO_ATTR,
     subdomains: 'abc',
     maxZoom: 17,
   },
-  'light': ESRI_LIGHT,
-  'dark': ESRI_DARK,
-  'satellite': ESRI_SATELLITE,
+  light: ESRI_LIGHT,
+  dark: ESRI_DARK,
+  satellite: ESRI_SATELLITE,
   'satellite-streets': {
     ...ESRI_SATELLITE,
     overlayUrl:
@@ -86,17 +86,17 @@ export const LEAFLET_THEME_TILES = { light: ESRI_LIGHT, dark: ESRI_DARK }
 export const leafletMapVariants = cva('relative size-full overflow-hidden bg-muted isolate', {
   variants: {
     variant: {
-      'default': '',
-      'muted': '',
-      'streets': '',
-      'outdoors': '',
-      'light': '',
-      'dark': '',
-      'satellite': '',
+      default: '',
+      muted: '',
+      streets: '',
+      outdoors: '',
+      light: '',
+      dark: '',
+      satellite: '',
       'satellite-streets': '',
       'navigation-day': '',
       'navigation-night': '',
-      'standard': '',
+      standard: '',
     },
     size: {
       default: 'h-96 w-full',

@@ -1,4 +1,6 @@
 <script lang="ts" module>
+  import type * as L from 'leaflet'
+
   export interface LeafletTileLayerProps {
     /** Raster tile URL template ({z}/{x}/{y}, optional {s} subdomains + {r} retina). */
     url: string
@@ -13,58 +15,35 @@
 </script>
 
 <script lang="ts">
-  import { onDestroy } from 'svelte'
-  import { browser } from '$app/environment'
-  import type * as L from 'leaflet'
-  import { defined, loadLeaflet, useLeafletMap } from './leaflet-context.svelte'
+  import { defined, useLeafletLayer } from './leaflet-context.svelte'
 
-  let {
-    url,
-    attribution = undefined,
-    subdomains = undefined,
-    minZoom = undefined,
-    maxZoom = undefined,
-    opacity = undefined,
-    zIndex = undefined,
-    tms = undefined,
-  }: LeafletTileLayerProps = $props()
+  let { url, attribution, subdomains, minZoom, maxZoom, opacity, zIndex, tms }: LeafletTileLayerProps = $props()
 
-  const mapState = useLeafletMap()
-  let layer: L.TileLayer | null = null
-  let cancelled = false
+  const layer = useLeafletLayer((map, Ll) =>
+    Ll.tileLayer(
+      url,
+      defined({
+        attribution,
+        subdomains,
+        minZoom,
+        maxZoom,
+        opacity,
+        zIndex,
+        tms,
+      }),
+    ),
+  )
 
-  onDestroy(() => {
-    cancelled = true
-    try {
-      layer?.remove()
-    } catch {
-      /* map already destroyed */
-    }
-    layer = null
+  $effect(() => {
+    if (url) layer.current?.setUrl(url)
   })
 
   $effect(() => {
-    const map = mapState.map
-    if (!browser || !map || layer) return
-    void (async () => {
-      const mod = await loadLeaflet()
-      if (cancelled || layer) return
-      layer = mod.tileLayer(
-        url,
-        defined({ attribution, subdomains, minZoom, maxZoom, opacity, zIndex, tms }),
-      )
-      layer.addTo(map)
-    })()
+    if (opacity !== undefined) layer.current?.setOpacity(opacity)
   })
 
   $effect(() => {
-    if (layer && url) layer.setUrl(url)
-  })
-  $effect(() => {
-    if (layer && opacity !== undefined) layer.setOpacity(opacity)
-  })
-  $effect(() => {
-    if (layer && zIndex !== undefined) layer.setZIndex(zIndex)
+    if (zIndex !== undefined) layer.current?.setZIndex(zIndex)
   })
 </script>
 

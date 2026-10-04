@@ -2,7 +2,7 @@
   import type { Snippet } from 'svelte'
   import type * as L from 'leaflet'
 
-  export type MarkerAnchor =
+  export type LeafletMarkerAnchor =
     | 'center'
     | 'top'
     | 'bottom'
@@ -14,15 +14,18 @@
     | 'bottom-right'
 
   export interface LeafletMarkerProps {
-    /** [lng, lat] — Mapbox order. */
+    /** [lng, lat] — Mapbox order, matching the `map` component's MapMarker. */
     lngLat: [number, number]
     /** Which edge/corner of the marker content sits on the coordinate. */
-    anchor?: MarkerAnchor
+    anchor?: LeafletMarkerAnchor
     draggable?: boolean
     opacity?: number
     zIndexOffset?: number
     title?: string
     alt?: string
+    /** Custom marker HTML. Omit for Leaflet's default pin. */
+    icon?: Snippet
+    /** Overlay children (`<LeafletPopup>` / `<LeafletTooltip>`) bound to the marker. */
     children?: Snippet
     onclick?: (ev: L.LeafletMouseEvent) => void
     onready?: (marker: L.Marker) => void
@@ -30,94 +33,65 @@
 </script>
 
 <script lang="ts">
-  import { onDestroy } from 'svelte'
-  import { browser } from '$app/environment'
-  import {
-    defined,
-    loadLeaflet,
-    toLatLng,
-    useLeafletMap,
-    LEAFLET_LAYER_KEY,
-    LeafletLayerState,
-  } from './leaflet-context.svelte'
-  import { setContext } from 'svelte'
+  import { defined, toLatLng, useLeafletLayer } from './leaflet-context.svelte'
 
   let {
     lngLat,
     anchor = 'center',
-    draggable = undefined,
-    opacity = undefined,
-    zIndexOffset = undefined,
-    title = undefined,
-    alt = undefined,
+    draggable,
+    opacity,
+    zIndexOffset,
+    title,
+    alt,
+    icon,
     children,
     onclick,
     onready,
   }: LeafletMarkerProps = $props()
 
-  const mapState = useLeafletMap()
-  // This marker's own layer scope for nested popups/tooltips.
-  const layerState = new LeafletLayerState()
-  setContext(LEAFLET_LAYER_KEY, layerState)
-
   let el = $state<HTMLElement | null>(null)
-  let marker: L.Marker | null = null
-  let cancelled = false
 
-  onDestroy(() => {
-    cancelled = true
-    try {
-      marker?.remove()
-    } catch {
-      /* map already destroyed */
+  const layer = useLeafletLayer((map, Ll) => {
+    const options: L.MarkerOptions = defined({
+      interactive: true,
+      draggable,
+      opacity,
+      zIndexOffset,
+      title,
+      alt,
+    })
+    if (icon && el) {
+      options.icon = Ll.divIcon({ className: 'uipkge-leaflet-div-icon', html: el })
     }
-    marker = null
-    layerState.layer = null
+    const marker = Ll.marker(toLatLng(lngLat), options)
+    marker.on('click', (ev) => onclick?.(ev))
+    return marker
   })
 
   $effect(() => {
-    const map = mapState.map
-    if (!browser || !map || marker) return
-    void lngLat
-    void anchor
-    let done = false
-    ;(async () => {
-      const mod = await loadLeaflet()
-      if (cancelled || done || marker) return
-      // Only treat slot content as icon when it holds non-popup/tooltip nodes.
-      const hasIconContent = Boolean(el?.childNodes.length)
-      const options: L.MarkerOptions = defined({
-        interactive: true,
-        draggable,
-        opacity,
-        zIndexOffset,
-        title,
-        alt,
-      })
-      if (hasIconContent && el) {
-        options.icon = mod.divIcon({ className: 'uipkge-leaflet-div-icon', html: el })
-      }
-      const m = mod.marker(toLatLng(lngLat), options)
-      if (onclick) m.on('click', (ev) => onclick(ev as L.LeafletMouseEvent))
-      m.addTo(map)
-      marker = m
-      layerState.layer = m
-      onready?.(m)
-      done = true
-    })()
+    const m = layer.current
+    if (m) onready?.(m)
   })
 
   $effect(() => {
-    if (marker && lngLat) marker.setLatLng(toLatLng(lngLat))
+    const v = lngLat
+    if (v) layer.current?.setLatLng(toLatLng(v))
   })
+
   $effect(() => {
-    if (marker && opacity !== undefined) marker.setOpacity(opacity)
+    if (opacity !== undefined) layer.current?.setOpacity(opacity)
   })
+
   $effect(() => {
-    if (marker && zIndexOffset !== undefined) marker.setZIndexOffset(zIndexOffset)
+    if (zIndexOffset !== undefined) layer.current?.setZIndexOffset(zIndexOffset)
   })
 </script>
 
 <div bind:this={el} class="uipkge-leaflet-anchor" data-anchor={anchor}>
-  {@render children?.()}
+  {#if icon}
+    {@render icon()}
+  {/if}
 </div>
+{#if children}
+  <div class="hidden">{@render children()}</div>
+{/if}

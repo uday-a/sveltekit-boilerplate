@@ -21,43 +21,26 @@
 </script>
 
 <script lang="ts">
-  import { onDestroy } from 'svelte'
-  import { setContext } from 'svelte'
-  import { browser } from '$app/environment'
-  import {
-    defined,
-    loadLeaflet,
-    toLatLngs,
-    useLeafletMap,
-    LeafletLayerState,
-    LEAFLET_LAYER_KEY,
-  } from './leaflet-context.svelte'
+  import { defined, toLatLngs, useLeafletLayer } from './leaflet-context.svelte'
 
   let {
     lngLatPath,
-    color = undefined,
-    weight = undefined,
-    opacity = undefined,
-    lineCap = undefined,
-    lineJoin = undefined,
-    dashArray = undefined,
-    dashOffset = undefined,
-    smoothFactor = undefined,
-    noClip = undefined,
-    className = undefined,
+    color,
+    weight,
+    opacity,
+    lineCap,
+    lineJoin,
+    dashArray,
+    dashOffset,
+    smoothFactor,
+    noClip,
+    className,
     children,
     onclick,
   }: LeafletPolylineProps = $props()
 
-  const mapState = useLeafletMap()
-  const layerState = new LeafletLayerState()
-  setContext(LEAFLET_LAYER_KEY, layerState)
-
-  let layer: L.Polyline | null = null
-  let cancelled = false
-
-  function pathOptions(): L.PolylineOptions {
-    return defined({
+  const pathOptions = () =>
+    defined({
       color,
       weight,
       opacity,
@@ -70,42 +53,22 @@
       className,
       interactive: true,
     } as L.PolylineOptions)
-  }
 
-  onDestroy(() => {
-    cancelled = true
-    try {
-      layer?.remove()
-    } catch {
-      /* map already destroyed */
-    }
-    layer = null
-    layerState.layer = null
+  const layer = useLeafletLayer((map, Ll) => {
+    const line = Ll.polyline(toLatLngs(lngLatPath) as L.LatLngExpression[], pathOptions())
+    line.on('click', (ev) => onclick?.(ev))
+    return line
   })
 
   $effect(() => {
-    const map = mapState.map
-    if (!browser || !map || layer) return
-    void (async () => {
-      const mod = await loadLeaflet()
-      if (cancelled || layer) return
-      const line = mod.polyline(toLatLngs(lngLatPath) as L.LatLngExpression[], pathOptions())
-      if (onclick) line.on('click', (ev) => onclick(ev as L.LeafletMouseEvent))
-      line.addTo(map)
-      layer = line
-      layerState.layer = line
-    })()
+    layer.current?.setLatLngs(toLatLngs(lngLatPath) as L.LatLngExpression[])
   })
 
   $effect(() => {
-    if (layer && lngLatPath) layer.setLatLngs(toLatLngs(lngLatPath) as L.LatLngExpression[])
-  })
-  $effect(() => {
+    // Touch every style prop so the effect re-runs when any of them changes.
     void [color, weight, opacity, dashArray, dashOffset, lineCap, lineJoin]
-    layer?.setStyle(pathOptions())
+    layer.current?.setStyle(pathOptions())
   })
 </script>
 
-<div class="hidden">
-  {@render children?.()}
-</div>
+<div class="hidden">{@render children?.()}</div>

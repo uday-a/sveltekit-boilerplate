@@ -22,44 +22,27 @@
 </script>
 
 <script lang="ts">
-  import { onDestroy } from 'svelte'
-  import { setContext } from 'svelte'
-  import { browser } from '$app/environment'
-  import {
-    defined,
-    loadLeaflet,
-    toLatLngs,
-    useLeafletMap,
-    LeafletLayerState,
-    LEAFLET_LAYER_KEY,
-  } from './leaflet-context.svelte'
+  import { defined, toLatLngs, useLeafletLayer } from './leaflet-context.svelte'
 
   let {
     lngLatPath,
-    color = undefined,
-    weight = undefined,
-    opacity = undefined,
-    lineCap = undefined,
-    lineJoin = undefined,
-    dashArray = undefined,
-    dashOffset = undefined,
-    fill = undefined,
-    fillColor = undefined,
-    fillOpacity = undefined,
-    className = undefined,
+    color,
+    weight,
+    opacity,
+    lineCap,
+    lineJoin,
+    dashArray,
+    dashOffset,
+    fill,
+    fillColor,
+    fillOpacity,
+    className,
     children,
     onclick,
   }: LeafletPolygonProps = $props()
 
-  const mapState = useLeafletMap()
-  const layerState = new LeafletLayerState()
-  setContext(LEAFLET_LAYER_KEY, layerState)
-
-  let layer: L.Polygon | null = null
-  let cancelled = false
-
-  function pathOptions(): L.PolylineOptions {
-    return defined({
+  const pathOptions = () =>
+    defined({
       color,
       weight,
       opacity,
@@ -73,42 +56,22 @@
       className,
       interactive: true,
     } as L.PolylineOptions)
-  }
 
-  onDestroy(() => {
-    cancelled = true
-    try {
-      layer?.remove()
-    } catch {
-      /* map already destroyed */
-    }
-    layer = null
-    layerState.layer = null
+  const layer = useLeafletLayer((map, Ll) => {
+    const polygon = Ll.polygon(toLatLngs(lngLatPath) as L.LatLngExpression[], pathOptions())
+    polygon.on('click', (ev) => onclick?.(ev))
+    return polygon
   })
 
   $effect(() => {
-    const map = mapState.map
-    if (!browser || !map || layer) return
-    void (async () => {
-      const mod = await loadLeaflet()
-      if (cancelled || layer) return
-      const polygon = mod.polygon(toLatLngs(lngLatPath) as L.LatLngExpression[], pathOptions())
-      if (onclick) polygon.on('click', (ev) => onclick(ev as L.LeafletMouseEvent))
-      polygon.addTo(map)
-      layer = polygon
-      layerState.layer = polygon
-    })()
+    layer.current?.setLatLngs(toLatLngs(lngLatPath) as L.LatLngExpression[])
   })
 
   $effect(() => {
-    if (layer && lngLatPath) layer.setLatLngs(toLatLngs(lngLatPath) as L.LatLngExpression[])
-  })
-  $effect(() => {
+    // Touch every style prop so the effect re-runs when any of them changes.
     void [color, weight, opacity, fill, fillColor, fillOpacity, dashArray]
-    layer?.setStyle(pathOptions())
+    layer.current?.setStyle(pathOptions())
   })
 </script>
 
-<div class="hidden">
-  {@render children?.()}
-</div>
+<div class="hidden">{@render children?.()}</div>

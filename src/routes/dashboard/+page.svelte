@@ -606,26 +606,28 @@
             {/each}
             {#each officeLocations as office, i (office.id)}
               <LeafletMarker lngLat={office.lngLat} anchor="center">
-                <!-- WHY (Rule90): 200ms marker pop-in, and the HQ pulse is
-                     gated with motion-safe so reduced-motion gets a static dot. -->
-                <span
-                  class="animate-in fade-in-0 zoom-in-50 fill-mode-both relative flex items-center justify-center duration-200"
-                  style="animation-delay: {i * 70}ms"
-                >
-                  {#if office.kind === 'hq'}
-                    <span
-                      class={['absolute inset-0 rounded-full opacity-40 motion-safe:animate-ping', kindDotBg(office.kind)]}
-                      aria-hidden="true"
-                    ></span>
-                  {/if}
+                {#snippet icon()}
+                  <!-- WHY (Rule90): 200ms marker pop-in, and the HQ pulse is
+                       gated with motion-safe so reduced-motion gets a static dot. -->
                   <span
-                    class={[
-                      'outline-background relative block rounded-full ring-4 outline-2 transition-transform duration-200 hover:scale-125',
-                      markerSizeClass(office.headcount),
-                      kindDotClass(office.kind),
-                    ]}
-                  ></span>
-                </span>
+                    class="animate-in fade-in-0 zoom-in-50 fill-mode-both relative flex items-center justify-center duration-200"
+                    style="animation-delay: {i * 70}ms"
+                  >
+                    {#if office.kind === 'hq'}
+                      <span
+                        class={['absolute inset-0 rounded-full opacity-40 motion-safe:animate-ping', kindDotBg(office.kind)]}
+                        aria-hidden="true"
+                      ></span>
+                    {/if}
+                    <span
+                      class={[
+                        'outline-background relative block rounded-full ring-4 outline-2 transition-transform duration-200 hover:scale-125',
+                        markerSizeClass(office.headcount),
+                        kindDotClass(office.kind),
+                      ]}
+                    ></span>
+                  </span>
+                {/snippet}
                 <LeafletPopup offset={[0, -10]} minWidth={240}>
                   <OfficePopup {office} />
                 </LeafletPopup>

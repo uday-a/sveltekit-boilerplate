@@ -21,42 +21,25 @@
 </script>
 
 <script lang="ts">
-  import { onDestroy } from 'svelte'
-  import { setContext } from 'svelte'
-  import { browser } from '$app/environment'
-  import {
-    defined,
-    loadLeaflet,
-    toLatLng,
-    useLeafletMap,
-    LeafletLayerState,
-    LEAFLET_LAYER_KEY,
-  } from './leaflet-context.svelte'
+  import { defined, toLatLng, useLeafletLayer } from './leaflet-context.svelte'
 
   let {
     center,
-    radius = undefined,
-    color = undefined,
-    weight = undefined,
-    opacity = undefined,
-    dashArray = undefined,
-    fill = undefined,
-    fillColor = undefined,
-    fillOpacity = undefined,
-    className = undefined,
+    radius,
+    color,
+    weight,
+    opacity,
+    dashArray,
+    fill,
+    fillColor,
+    fillOpacity,
+    className,
     children,
     onclick,
   }: LeafletCircleMarkerProps = $props()
 
-  const mapState = useLeafletMap()
-  const layerState = new LeafletLayerState()
-  setContext(LEAFLET_LAYER_KEY, layerState)
-
-  let layer: L.CircleMarker | null = null
-  let cancelled = false
-
-  function pathOptions(): L.CircleMarkerOptions {
-    return defined({
+  const pathOptions = () =>
+    defined({
       color,
       weight,
       opacity,
@@ -67,45 +50,26 @@
       className,
       interactive: true,
     } as L.CircleMarkerOptions)
-  }
 
-  onDestroy(() => {
-    cancelled = true
-    try {
-      layer?.remove()
-    } catch {
-      /* map already destroyed */
-    }
-    layer = null
-    layerState.layer = null
+  const layer = useLeafletLayer((map, Ll) => {
+    const marker = Ll.circleMarker(toLatLng(center), { ...pathOptions(), radius: radius ?? 10 }) // local: this repo's @types/leaflet requires a number; 10 is Leaflet's default
+    marker.on('click', (ev) => onclick?.(ev))
+    return marker
   })
 
   $effect(() => {
-    const map = mapState.map
-    if (!browser || !map || layer) return
-    void (async () => {
-      const mod = await loadLeaflet()
-      if (cancelled || layer) return
-      const marker = mod.circleMarker(toLatLng(center), { ...pathOptions(), radius: radius ?? 10 })
-      if (onclick) marker.on('click', (ev) => onclick(ev as L.LeafletMouseEvent))
-      marker.addTo(map)
-      layer = marker
-      layerState.layer = marker
-    })()
+    if (center) layer.current?.setLatLng(toLatLng(center))
   })
 
   $effect(() => {
-    if (layer && center) layer.setLatLng(toLatLng(center))
+    if (radius !== undefined) layer.current?.setRadius(radius)
   })
+
   $effect(() => {
-    if (layer && radius !== undefined) layer.setRadius(radius)
-  })
-  $effect(() => {
+    // Touch every style prop so the effect re-runs when any of them changes.
     void [color, weight, opacity, fill, fillColor, fillOpacity, dashArray]
-    layer?.setStyle(pathOptions())
+    layer.current?.setStyle(pathOptions())
   })
 </script>
 
-<div class="hidden">
-  {@render children?.()}
-</div>
+<div class="hidden">{@render children?.()}</div>

@@ -1,22 +1,22 @@
 <script lang="ts" module>
   import type { Snippet } from 'svelte'
   import type { HTMLAttributes } from 'svelte/elements'
+  import type * as L from 'leaflet'
   import type { LeafletMapVariant, LeafletMapVariants } from './leaflet-map.variants'
   import type { LeafletPosition } from './leaflet-context.svelte'
-  import type * as L from 'leaflet'
 
   export interface LeafletMapProps extends HTMLAttributes<HTMLDivElement> {
-    /** Named raster basemap preset. `muted` = theme-aware Esri canvas + desaturated tile pane. */
+    /** Named raster basemap preset ('streets' | 'outdoors' | 'satellite' | 'satellite-streets' | 'light' | 'dark' | 'navigation-day' | 'navigation-night' | 'standard' | 'muted' | 'default'). */
     variant?: LeafletMapVariant
-    /** Height preset. Omit to size via `class`. */
+    /** Height preset. Omit to size via `class` (blocks typically pass `size-full`). */
     size?: LeafletMapVariants['size']
     /** Custom raster tile URL template — overrides `variant`. */
     tileUrl?: string
-    /** Attribution HTML for a custom `tile-url`. */
+    /** Attribution HTML for a custom `tileUrl`. Defaults to the OpenStreetMap credit. */
     tileAttribution?: string
-    /** Tile subdomains for a custom `tile-url`. */
+    /** Tile subdomains for a custom `tileUrl` ('abcd' or ['a','b']). */
     tileSubdomains?: string | string[]
-    /** Initial [lng, lat] — Mapbox order. */
+    /** Initial [lng, lat] — Mapbox order, matching the `map` component. */
     center?: [number, number]
     zoom?: number
     minZoom?: number
@@ -24,28 +24,52 @@
     maxZoom?: number
     /** Show the zoom control. */
     navigation?: boolean
-    /** Placement of the zoom control. */
+    /** Placement of the zoom control ('top-left' | 'top-right' | 'bottom-left' | 'bottom-right'). */
     navigationPosition?: LeafletPosition
     /** Show the HTML5 fullscreen toggle button. */
     fullscreen?: boolean
-    /** Placement of the fullscreen button. */
+    /** Placement of the fullscreen button. Defaults to 'top-right'. */
     fullscreenPosition?: LeafletPosition
-    /** Show tile credits behind a ⓘ button. Keep on — OSM/Esri tiles require attribution. */
+    /** Show tile credits behind a ⓘ button (reveals on hover/tap). Keep on — OSM/Esri tiles require attribution. */
     attribution?: boolean
     /** Wheel zoom. Set false for maps embedded in scrollable pages. */
     scrollWheelZoom?: boolean
     /** Desaturate the tile pane to a quiet canvas (markers stay coloured). */
     muted?: boolean
-    children?: Snippet
+    /** Fires with the raw `L.Map` once it is created. */
     oncreated?: (map: L.Map) => void
+    children?: Snippet
+    ref?: HTMLDivElement | null
   }
 
+  export interface LeafletFlyToOptions {
+    /** [lng, lat] — Mapbox order. */
+    center?: [number, number]
+    zoom?: number
+    /** Milliseconds (converted to Leaflet's seconds). */
+    duration?: number
+  }
+
+  export interface LeafletViewOptions {
+    center?: [number, number]
+    zoom?: number
+  }
+
+  /** Handle returned by `bind:this` on <LeafletMap> — mirrors the `map`
+   *  component's MapRef: camera helpers plus `getMap()` for the raw
+   *  Leaflet Map. React's `readonly map` property has no Svelte equivalent
+   *  (`bind:this` publishes functions, not live property bindings) —
+   *  `getMap()` covers it. */
   export interface LeafletMapRef {
     getMap: () => L.Map | null
-    flyTo: (options?: { center?: [number, number], zoom?: number, duration?: number }) => void
-    setView: (options?: { center?: [number, number], zoom?: number }) => void
-    jumpTo: (options?: { center?: [number, number], zoom?: number }) => void
-    fitBounds: (bounds: [[number, number], [number, number]] | L.LatLngBoundsExpression, options?: L.FitBoundsOptions) => void
+    flyTo: (options?: LeafletFlyToOptions) => void
+    setView: (options?: LeafletViewOptions) => void
+    jumpTo: (options?: LeafletViewOptions) => void
+    /** [[west,south],[east,north]] in [lng, lat], or any Leaflet bounds expression. */
+    fitBounds: (
+      bounds: [[number, number], [number, number]] | L.LatLngBoundsExpression,
+      options?: L.FitBoundsOptions,
+    ) => void
     panTo: (center: [number, number]) => void
     zoomIn: () => void
     zoomOut: () => void
@@ -54,38 +78,48 @@
 </script>
 
 <script lang="ts">
-  import { onMount, setContext, tick } from 'svelte'
-  import { SvelteSet } from 'svelte/reactivity'
-  import { browser } from '$app/environment'
+  /**
+   * LeafletMap — a thin, theme-aware Leaflet wrapper that renders free raster
+   * tiles (OpenStreetMap, OpenTopoMap, Esri). No API key required.
+   *
+   * Drop `<LeafletMarker>` / `<LeafletPopup>` / `<LeafletPolyline>` /
+   * `<LeafletPolygon>` / `<LeafletCircle>` / `<LeafletCircleMarker>` /
+   * `<LeafletGeoJson>` / `<LeafletTileLayer>` into the children to build any
+   * map — the same composition model as the Mapbox `map` component.
+   *
+   * Not supported (Leaflet has no vector/GL renderer): pitch, bearing, 3D
+   * buildings/terrain, globe projection. Use a `variant` preset or `tileUrl`
+   * for custom raster tiles instead.
+   */
+  import { onDestroy, onMount, untrack } from 'svelte'
   import { cn } from '$lib/utils'
   import {
     defined,
     fixDefaultLeafletIcon,
     loadLeaflet,
+    setLeafletMapContext,
     toLatLng,
     toLatLngBounds,
-    LEAFLET_MAP_KEY,
-    LeafletMapState,
-    type LeafletModule,
   } from './leaflet-context.svelte'
+  import type { LeafletTilePreset } from './leaflet-map.variants'
   import {
     leafletMapVariants,
     LEAFLET_TILES,
     LEAFLET_THEME_TILES,
-    type LeafletTilePreset,
   } from './leaflet-map.variants'
+  import 'leaflet/dist/leaflet.css'
+  import './leaflet-map.css'
 
   let {
-    class: className,
     variant = 'default',
-    size = undefined,
-    tileUrl = undefined,
-    tileAttribution = undefined,
-    tileSubdomains = undefined,
+    size,
+    tileUrl,
+    tileAttribution,
+    tileSubdomains,
     center = [0, 20],
     zoom = 2,
-    minZoom = undefined,
-    maxZoom = undefined,
+    minZoom,
+    maxZoom,
     navigation = true,
     navigationPosition = 'bottom-right',
     fullscreen = false,
@@ -93,76 +127,86 @@
     attribution = true,
     scrollWheelZoom = true,
     muted = false,
-    children,
     oncreated,
+    children,
+    ref = $bindable(null),
+    class: className,
     ...restProps
   }: LeafletMapProps = $props()
 
-  const mapState = new LeafletMapState()
-  // Published to LeafletMarker / LeafletPopup / … children.
-  setContext(LEAFLET_MAP_KEY, mapState)
-
-  const isMuted = $derived(muted || variant === 'muted')
   let htmlDark = $state(false)
+  const isMuted = $derived(muted || variant === 'muted')
 
-  const resolvedTiles = $derived.by((): LeafletTilePreset => {
+  const resolvedTiles = $derived.by<LeafletTilePreset>(() => {
     if (tileUrl) {
       return {
         url: tileUrl,
         attribution:
-          tileAttribution
-          ?? '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+          tileAttribution ?? '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
         subdomains: tileSubdomains,
         maxZoom,
       }
     }
-    if (variant && variant !== 'default' && variant !== 'muted' && LEAFLET_TILES[variant as keyof typeof LEAFLET_TILES]) {
+    if (
+      variant &&
+      variant !== 'default' &&
+      variant !== 'muted' &&
+      LEAFLET_TILES[variant as keyof typeof LEAFLET_TILES]
+    ) {
       return LEAFLET_TILES[variant as keyof typeof LEAFLET_TILES]
     }
     return htmlDark ? LEAFLET_THEME_TILES.dark : LEAFLET_THEME_TILES.light
   })
 
-  // Client-only: Leaflet needs the DOM, so SSR renders just the shell.
+  // Client-only: Leaflet needs the DOM, so SSR renders just the bg-muted shell.
+  let mounted = $state(false)
   let inView = $state(false)
-  let containerRef = $state<HTMLDivElement | null>(null)
   let mapEl = $state<HTMLDivElement | null>(null)
-  let Lmod: LeafletModule | null = null
+  let mapInstance = $state<L.Map | null>(null)
+  let Lmod: typeof import('leaflet') | null = null
   let baseLayer: L.TileLayer | null = null
   let overlayLayer: L.TileLayer | null = null
+  let lastTiles: LeafletTilePreset | null = null
   let resizeObserver: ResizeObserver | null = null
   let intersectionObserver: IntersectionObserver | null = null
   let themeObserver: MutationObserver | null = null
 
-  let attributions = $state<string[]>([])
-  let showAttribution = $state(false)
-  let isFullscreen = $state(false)
-  let canZoomIn = $state(true)
-  let canZoomOut = $state(true)
+  // Published to LeafletMarker / LeafletPopup / … children.
+  setLeafletMapContext({
+    get map() {
+      return mapInstance
+    },
+  })
 
   function applyTiles(tiles: LeafletTilePreset) {
-    const m = mapState.map
-    const mod = Lmod
-    if (!m || !mod) return
+    const m = mapInstance
+    const Ll = Lmod
+    if (!m || !Ll) return
     baseLayer?.remove()
     baseLayer = null
     overlayLayer?.remove()
     overlayLayer = null
-    baseLayer = mod.tileLayer(tiles.url, {
+    baseLayer = Ll.tileLayer(tiles.url, {
       attribution: tiles.attribution,
       ...(tiles.subdomains ? { subdomains: tiles.subdomains } : {}),
       maxZoom: tiles.maxZoom ?? 19,
     })
     baseLayer.addTo(m)
     if (tiles.overlayUrl) {
-      overlayLayer = mod.tileLayer(tiles.overlayUrl, { maxZoom: tiles.maxZoom ?? 19 })
+      overlayLayer = Ll.tileLayer(tiles.overlayUrl, { maxZoom: tiles.maxZoom ?? 19 })
       overlayLayer.addTo(m)
     }
   }
 
+  // Collect attribution strings from every layer (base tiles, overlays, custom
+  // LeafletTileLayers) — deduped, rendered by the ⓘ popover.
+  let attributions = $state<string[]>([])
+  let showAttribution = $state(false)
   function collectAttributions() {
-    const m = mapState.map
+    const m = mapInstance
     if (!m) return
-    const seen = new SvelteSet<string>()
+    // eslint-disable-next-line svelte/prefer-svelte-reactivity -- local scratch set, not reactive state
+    const seen = new Set<string>()
     m.eachLayer((layer) => {
       const a = (layer as L.TileLayer).options?.attribution
       if (typeof a === 'string' && a) seen.add(a)
@@ -170,8 +214,10 @@
     attributions = [...seen]
   }
 
+  let canZoomIn = $state(true)
+  let canZoomOut = $state(true)
   function syncZoomBounds() {
-    const m = mapState.map
+    const m = mapInstance
     if (!m) return
     canZoomIn = m.getZoom() < m.getMaxZoom()
     canZoomOut = m.getZoom() > m.getMinZoom()
@@ -179,11 +225,11 @@
 
   function createMap() {
     const el = mapEl
-    const mod = Lmod
-    if (!el || !mod || mapState.map) return
-    fixDefaultLeafletIcon(mod)
+    const Ll = Lmod
+    if (!el || !Ll || mapInstance) return
+    fixDefaultLeafletIcon(Ll)
     const tiles = resolvedTiles
-    const m = mod.map(
+    const m = Ll.map(
       el,
       defined({
         center: toLatLng(center ?? [0, 20]),
@@ -195,24 +241,14 @@
         scrollWheelZoom,
       }),
     )
-    mapState.map = m
+    mapInstance = m
+    lastTiles = tiles
     applyTiles(tiles)
     m.on('zoomend', syncZoomBounds)
     syncZoomBounds()
     m.on('layeradd layerremove', collectAttributions)
     collectAttributions()
     oncreated?.(m)
-  }
-
-  async function ensureLeaflet() {
-    if (!browser || mapState.map || !Lmod) {
-      if (!browser || mapState.map) return
-    }
-    Lmod = await loadLeaflet()
-    // The map div mounts under {#if inView} — flush first, otherwise
-    // createMap sees mapEl === null and silently gives up forever.
-    await tick()
-    createMap()
   }
 
   onMount(() => {
@@ -223,17 +259,15 @@
     syncTheme()
     themeObserver = new MutationObserver(syncTheme)
     themeObserver.observe(root, { attributes: true, attributeFilter: ['class'] })
+    mounted = true
 
-    const el = containerRef
+    const el = ref
     if (!el || typeof IntersectionObserver === 'undefined') {
       inView = true
-      void ensureLeaflet()
     } else {
       intersectionObserver = new IntersectionObserver(
         ([entry]) => {
-          const visible = entry?.isIntersecting ?? true
-          inView = visible
-          if (visible) void ensureLeaflet()
+          inView = entry!.isIntersecting
         },
         { rootMargin: '160px', threshold: 0.01 },
       )
@@ -241,7 +275,7 @@
     }
     if (typeof ResizeObserver !== 'undefined' && el) {
       resizeObserver = new ResizeObserver(() => {
-        mapState.map?.invalidateSize()
+        mapInstance?.invalidateSize()
       })
       resizeObserver.observe(el)
     }
@@ -252,129 +286,165 @@
     document.addEventListener('fullscreenchange', onFullscreenChange)
 
     return () => {
-      resizeObserver?.disconnect()
-      intersectionObserver?.disconnect()
-      themeObserver?.disconnect()
       document.removeEventListener('fullscreenchange', onFullscreenChange)
-      mapState.map?.remove()
-      mapState.map = null
     }
   })
 
-  // Retile on variant / theme / custom-tile changes.
+  onDestroy(() => {
+    resizeObserver?.disconnect()
+    intersectionObserver?.disconnect()
+    themeObserver?.disconnect()
+    try {
+      mapInstance?.remove()
+    } catch {
+      /* already destroyed */
+    }
+    mapInstance = null
+  })
+
+  // Leaflet module loads lazily once the container is both mounted and in view.
+  $effect(() => {
+    if (!mounted || !inView || mapInstance) return
+    let alive = true
+    void (async () => {
+      const Ll = await loadLeaflet()
+      if (!alive) return
+      Lmod = Ll
+      createMap()
+    })()
+    return () => {
+      alive = false
+    }
+  })
+
+  // Retile on variant / theme / custom-tile changes (skip the initial run —
+  // createMap already applied them).
   $effect(() => {
     const tiles = resolvedTiles
-    if (browser && mapState.map) applyTiles(tiles)
+    if (mapInstance && tiles !== lastTiles) {
+      lastTiles = tiles
+      applyTiles(tiles)
+    }
   })
 
+  // Track the coordinates, not the array: a parent re-render that passes a
+  // fresh `[lng, lat]` literal must not snap the user's pan/zoom back. The map
+  // is read untracked so creation (and any `oncreated` fitBounds) isn't undone.
+  const centerLng = $derived(center?.[0])
+  const centerLat = $derived(center?.[1])
   $effect(() => {
-    if (!browser || !mapState.map || !center) return
-    void zoom
-    mapState.map.setView(toLatLng(center), zoom)
-  })
-
-  $effect(() => {
-    if (!browser || !mapState.map) return
-    if (scrollWheelZoom) mapState.map.scrollWheelZoom.enable()
-    else mapState.map.scrollWheelZoom.disable()
+    const lng = centerLng
+    const lat = centerLat
+    const z = zoom
+    const m = untrack(() => mapInstance)
+    if (m && lng !== undefined && lat !== undefined) m.setView(toLatLng([lng, lat]), z)
   })
 
   $effect(() => {
     if (!attribution) showAttribution = false
   })
 
+  $effect(() => {
+    const enabled = scrollWheelZoom
+    if (!mapInstance) return
+    if (enabled) mapInstance.scrollWheelZoom.enable()
+    else mapInstance.scrollWheelZoom.disable()
+  })
+
+  let isFullscreen = $state(false)
   function toggleFullscreen() {
-    if (!browser) return
-    const el = containerRef
+    const el = ref
     if (!el) return
     if (document.fullscreenElement) void document.exitFullscreen()
     else void el.requestFullscreen?.()
   }
 
+  // Zoom/fullscreen chrome is plain HTML overlaid on the map (like Mapbox's
+  // controls) — a corner stack per occupied corner, zoom group above fullscreen.
+  const cornerOrder = ['top-left', 'top-right', 'bottom-left', 'bottom-right'] as const
+  const cornerClasses = $derived<Record<(typeof cornerOrder)[number], string>>({
+    'top-left': 'left-3 top-3',
+    'top-right': 'right-3 top-3',
+    // above the ⓘ button (bottom-left) when credits are shown
+    'bottom-left': attribution && attributions.length ? 'bottom-9 left-3' : 'bottom-3 left-3',
+    'bottom-right': 'bottom-3 right-3',
+  })
+  const navPosition = $derived(navigationPosition ?? 'bottom-right')
+  const fsPosition = $derived(fullscreenPosition ?? 'top-right')
+
   /** Mapbox-style camera shim — accepts { center: [lng, lat], zoom, duration(ms) }. */
-  export function flyTo(options: { center?: [number, number], zoom?: number, duration?: number } = {}) {
-    const m = mapState.map
+  export function flyTo(options: LeafletFlyToOptions = {}) {
+    const m = mapInstance
     if (!m) return
     const target = options.center ? toLatLng(options.center) : m.getCenter()
-    m.flyTo(target, options.zoom ?? m.getZoom(), { duration: (options.duration ?? 800) / 1000 })
+    m.flyTo(target, options.zoom ?? m.getZoom(), {
+      duration: (options.duration ?? 800) / 1000,
+    })
   }
 
-  export function setView(options: { center?: [number, number], zoom?: number } = {}) {
-    const m = mapState.map
+  export function setView(options: LeafletViewOptions = {}) {
+    const m = mapInstance
     if (!m) return
     m.setView(options.center ? toLatLng(options.center) : m.getCenter(), options.zoom ?? m.getZoom())
   }
 
-  export function jumpTo(options: { center?: [number, number], zoom?: number } = {}) {
-    const m = mapState.map
+  export function jumpTo(options: LeafletViewOptions = {}) {
+    const m = mapInstance
     if (!m) return
-    m.setView(options.center ? toLatLng(options.center) : m.getCenter(), options.zoom ?? m.getZoom(), { animate: false })
+    m.setView(options.center ? toLatLng(options.center) : m.getCenter(), options.zoom ?? m.getZoom(), {
+      animate: false,
+    })
   }
 
-  export function getMap(): L.Map | null {
-    return mapState.map
+  // `bind:this` on <LeafletMap> hands back these camera helpers plus
+  // `getMap()` for the raw L.Map. It mirrors the `map` component's MapRef.
+  /** The underlying Leaflet Map, or null until it is created. */
+  export function getMap() {
+    return mapInstance
   }
   export function fitBounds(
     bounds: [[number, number], [number, number]] | L.LatLngBoundsExpression,
     options?: L.FitBoundsOptions,
   ) {
-    mapState.map?.fitBounds(toLatLngBounds(bounds as [[number, number], [number, number]]), options)
+    mapInstance?.fitBounds(toLatLngBounds(bounds as [[number, number], [number, number]]), options)
   }
-
-  export function panTo(c: [number, number]) {
-    mapState.map?.panTo(toLatLng(c))
+  export function panTo(center: [number, number]) {
+    mapInstance?.panTo(toLatLng(center))
   }
-
   export function zoomIn() {
-    mapState.map?.zoomIn()
+    mapInstance?.zoomIn()
   }
-
   export function zoomOut() {
-    mapState.map?.zoomOut()
+    mapInstance?.zoomOut()
   }
-
   export function resize() {
-    mapState.map?.invalidateSize()
+    mapInstance?.invalidateSize()
   }
-
-  const cornerOrder: Array<'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'> = [
-    'top-left',
-    'top-right',
-    'bottom-left',
-    'bottom-right',
-  ]
-
-  const cornerClass = $derived.by((): Record<string, string> => ({
-    'top-left': 'left-3 top-3',
-    'top-right': 'right-3 top-3',
-    'bottom-left': attribution && attributions.length ? 'bottom-9 left-3' : 'bottom-3 left-3',
-    'bottom-right': 'bottom-3 right-3',
-  }))
 </script>
 
 <div
-  bind:this={containerRef}
-  data-uipkge
+  bind:this={ref}
+  data-uipkge=""
   data-slot="leaflet-map"
   data-variant={variant}
   data-muted={isMuted}
   class={cn(leafletMapVariants({ variant, ...(size ? { size } : {}) }), className)}
   {...restProps}
 >
-  {#if inView}
-    <div bind:this={mapEl} class="size-full"></div>
-  {/if}
+  <div bind:this={mapEl} class="size-full" hidden={!inView}></div>
   {#each cornerOrder as corner (corner)}
-    {#if mapState.map && ((navigation && navigationPosition === corner) || (fullscreen && fullscreenPosition === corner))}
-      <div class="absolute z-[1000] flex flex-col gap-2.5 {cornerClass[corner]}">
-        {#if navigation && navigationPosition === corner}
-          <div class="border-border bg-card divide-border flex flex-col divide-y overflow-hidden rounded-lg border shadow-sm">
+    {#if mapInstance && ((navigation && navPosition === corner) || (fullscreen && fsPosition === corner))}
+      <div class="absolute z-[1000] flex flex-col gap-2.5 {cornerClasses[corner]}">
+        {#if navigation && navPosition === corner}
+          <div
+            class="border-border bg-card divide-border flex flex-col divide-y overflow-hidden rounded-lg border shadow-sm"
+          >
             <button
               type="button"
               class="text-muted-foreground hover:bg-muted flex size-8 items-center justify-center transition-colors disabled:pointer-events-none disabled:opacity-40"
               aria-label="Zoom in"
               disabled={!canZoomIn}
-              onclick={() => mapState.map?.zoomIn()}
+              onclick={() => mapInstance?.zoomIn()}
             >
               <svg class="size-full" viewBox="0 0 29 29" fill="currentColor" aria-hidden="true">
                 <path
@@ -387,7 +457,7 @@
               class="text-muted-foreground hover:bg-muted flex size-8 items-center justify-center transition-colors disabled:pointer-events-none disabled:opacity-40"
               aria-label="Zoom out"
               disabled={!canZoomOut}
-              onclick={() => mapState.map?.zoomOut()}
+              onclick={() => mapInstance?.zoomOut()}
             >
               <svg class="size-full" viewBox="0 0 29 29" fill="currentColor" aria-hidden="true">
                 <path d="M10 13c-.75 0-1.5.75-1.5 1.5S9.25 16 10 16h9c.75 0 1.5-.75 1.5-1.5S19.75 13 19 13h-9z" />
@@ -395,7 +465,7 @@
             </button>
           </div>
         {/if}
-        {#if fullscreen && fullscreenPosition === corner}
+        {#if fullscreen && fsPosition === corner}
           <button
             type="button"
             class="border-border bg-card text-muted-foreground hover:bg-muted flex size-8 items-center justify-center rounded-lg border shadow-sm transition-colors"
@@ -420,15 +490,15 @@
   {/each}
   <!-- Tile credits behind a Mapbox-style ⓘ button: hover reveals on desktop,
        tap toggles on touch. Keep visible — OSM/Esri tiles require credit. -->
-  {#if mapState.map && attribution && attributions.length}
+  {#if mapInstance && attribution && attributions.length}
     <div class="group absolute bottom-3 left-3 z-[1000] flex flex-col items-start gap-1.5">
       <div
-        class="border-border bg-popover text-popover-foreground max-w-64 rounded-md border px-2.5 py-1.5 text-xs leading-relaxed shadow-md transition-opacity [&_a]:underline {showAttribution
+        class="border-border bg-popover text-popover-foreground max-w-64 rounded-md border px-2.5 py-1.5 text-[11px] leading-relaxed shadow-md transition-opacity [&_a]:underline {showAttribution
           ? 'visible opacity-100'
           : 'invisible opacity-0 group-hover:visible group-hover:opacity-100'}"
         role="note"
       >
-        <!-- eslint-disable-next-line svelte/no-at-html-tags -->
+        <!-- eslint-disable-next-line svelte/no-at-html-tags -- provider attribution HTML from tile presets, not user input -->
         {@html attributions.join(' | ')}
       </div>
       <button

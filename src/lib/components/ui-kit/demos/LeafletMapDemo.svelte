@@ -19,7 +19,9 @@
 >
   {#each offices as office (office.city)}
     <LeafletMarker lngLat={office.lngLat} anchor="center">
-      <span class="bg-primary ring-primary/20 block size-3.5 rounded-full ring-4"></span>
+      {#snippet icon()}
+        <span class="bg-primary ring-primary/20 block size-3.5 rounded-full ring-4"></span>
+      {/snippet}
       <LeafletPopup offset={[0, -10]}>
         <p class="text-foreground text-sm font-semibold">{office.city}</p>
       </LeafletPopup>
