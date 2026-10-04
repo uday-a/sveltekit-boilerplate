@@ -67,6 +67,16 @@ const ADMIN_PATH_PREFIXES = [
   '/admin',
 ]
 
+// Baseline security headers on every response (same set as the Angular and
+// Next siblings). HSTS is left to Vercel; no CSP on purpose (inline theme
+// script + third-party analytics would need nonces).
+const SECURITY_HEADERS: Record<string, string> = {
+  'X-Content-Type-Options': 'nosniff',
+  'X-Frame-Options': 'DENY',
+  'Referrer-Policy': 'strict-origin-when-cross-origin',
+  'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
+}
+
 function matchesPrefix(pathname: string, prefixes: string[]): boolean {
   return prefixes.some(p => pathname === p || pathname.startsWith(`${p}/`))
 }
@@ -103,10 +113,12 @@ const appHandle: Handle = async ({ event, resolve }) => {
   // the tradeoff note in $lib/i18n) — this only fixes the lang attribute,
   // which is race-free unlike the message dictionary.
   const locale = normalizeLocale(event.cookies.get(LOCALE_COOKIE_NAME))
-  return resolve(event, {
+  const response = await resolve(event, {
     transformPageChunk: ({ html }) =>
       locale === 'en' ? html : html.replace('<html lang="en">', `<html lang="${locale}">`),
   })
+  for (const [name, value] of Object.entries(SECURITY_HEADERS)) response.headers.set(name, value)
+  return response
 }
 
 export const handle: Handle = PUBLIC_SENTRY_DSN
