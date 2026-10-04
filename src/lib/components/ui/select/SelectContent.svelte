@@ -40,6 +40,8 @@
     ref = contentEl
   })
 
+  // Flips true after hydration (client-only render of the closed items).
+  // eslint-disable-next-line svelte/prefer-writable-derived
   let mounted = $state(false)
   $effect(() => {
     mounted = true
