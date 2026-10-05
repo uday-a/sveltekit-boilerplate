@@ -36,6 +36,8 @@
   import ThemeCustomizer from '$lib/components/blocks/theme-customizer/ThemeCustomizer.svelte'
   import LocaleSwitcher from '$lib/components/blocks/locale-switcher/LocaleSwitcher.svelte'
   import { themeStore, type Theme } from '$lib/theme.svelte'
+  import { browser } from '$app/environment'
+  import { page } from '$app/state'
 
   let {
     breadcrumbs = [{ label: 'Dashboard' }],
@@ -49,6 +51,10 @@
   // ThemeSwitch's Theme union includes 'black' (extra registry preset) which
   // our app-level theme store doesn't model. Coerce at the boundary; the
   // cookie only ever stores values from our narrower union.
+  // SSR has no theme store state, so render from the cookie the client store
+  // starts from; otherwise the icon hydrates mismatched (sun vs moon).
+  const themeValue = $derived(browser ? themeStore.current : (page.data.theme ?? 'system'))
+
   function onThemeChange(next: ThemeSwitchTheme) {
     if (next === 'black') return
     themeStore.set(next as Theme)
@@ -113,7 +119,7 @@
           <LocaleSwitcher />
           <ThemeCustomizer />
           <div data-tour="theme" class="inline-flex">
-            <ThemeSwitch value={themeStore.current} variant="icon-only" onValueChange={onThemeChange} />
+            <ThemeSwitch value={themeValue} variant="icon-only" onValueChange={onThemeChange} />
           </div>
           <NotificationsPopover>
             {#snippet children({ props, unreadCount })}

@@ -23,6 +23,8 @@ declare global {
     interface PageData {
       user?: SessionUser | null
       demo?: boolean
+      // Theme cookie value read on the server (see +layout.server.ts).
+      theme?: 'light' | 'dark' | 'system'
       // Page meta description; the root layout falls back to the site default.
       description?: string
     }
