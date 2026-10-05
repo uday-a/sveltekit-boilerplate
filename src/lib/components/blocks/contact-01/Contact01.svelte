@@ -10,6 +10,7 @@
   import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '$lib/components/ui/card'
   import { Input } from '$lib/components/ui/input'
   import { Label } from '$lib/components/ui/label'
+  import { LeafletMap, LeafletMarker, LeafletPopup } from '$lib/components/ui/leaflet-map'
   import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '$lib/components/ui/select'
   import { Textarea } from '$lib/components/ui/textarea'
 
@@ -23,6 +24,9 @@
     partnership: 'Partnerships',
     other: 'Something else',
   }
+
+  // Apple Park, Cupertino — [lng, lat] (Mapbox order, as LeafletMap expects).
+  const office: [number, number] = [-122.009, 37.3349]
 
   let name = $state('')
   let email = $state('')
@@ -76,14 +80,37 @@
             </div>
             <div>
               <p class="text-muted-foreground text-xs uppercase">Office</p>
-              <p class="text-sm font-medium">120 Howard St, San Francisco</p>
+              <p class="text-sm font-medium">One Apple Park Way, Cupertino, CA 95014</p>
             </div>
           </div>
         </div>
 
-        <div class="bg-muted/40 mt-6 flex h-48 items-center justify-center rounded-lg border border-dashed">
-          <p class="text-muted-foreground text-sm">Map placeholder</p>
-        </div>
+        <!-- LeafletMap loads Leaflet client-side only, so SSR renders just the shell. -->
+        <LeafletMap
+          variant="muted"
+          center={office}
+          zoom={14}
+          scrollWheelZoom={false}
+          role="region"
+          aria-label="Map showing Apple Park in Cupertino"
+          class="bg-muted/40 mt-6 h-48 rounded-lg border border-dashed"
+        >
+          <LeafletMarker lngLat={office} anchor="center">
+            {#snippet icon()}
+              <!-- Same HQ marker as dashboard/locations: primary dot, ring, motion-safe pulse. -->
+              <span class="animate-in fade-in-0 zoom-in-50 fill-mode-both relative flex items-center justify-center duration-200">
+                <span class="bg-primary absolute inset-0 rounded-full opacity-40 motion-safe:animate-ping" aria-hidden="true"></span>
+                <span
+                  class="outline-background bg-primary ring-primary/25 relative block size-5 rounded-full ring-4 outline-2 transition-transform duration-200 hover:scale-125"
+                ></span>
+              </span>
+            {/snippet}
+            <LeafletPopup offset={[0, -10]}>
+              <p class="text-sm font-medium">Apple Park</p>
+              <p class="text-muted-foreground text-xs">One Apple Park Way, Cupertino, CA</p>
+            </LeafletPopup>
+          </LeafletMarker>
+        </LeafletMap>
       </div>
 
       <Card>
