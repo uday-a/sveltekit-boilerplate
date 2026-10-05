@@ -129,7 +129,9 @@
     </TooltipProvider>
   </ToggleGroup>
 
-  <div class="flex items-center">
+  <!-- Overlap lives on the row: TooltipTrigger wraps each button in its own
+       span, so a first:ml-0 on the button would zero every overlap. -->
+  <div class="flex items-center -space-x-1.5">
     <TooltipProvider delayDuration={300}>
       {#each Object.entries(assignees) as [key, a] (key)}
         <Tooltip>
@@ -138,7 +140,7 @@
               class={[
                 // rounded-full so the selected ring + focus ring trace the
                 // Avatar's circular outline instead of the rectangular button.
-                'ring-background focus-visible:ring-ring/50 relative -ml-1.5 rounded-full transition-colors outline-none first:ml-0 focus-visible:ring-1',
+                'ring-background focus-visible:ring-ring/50 relative rounded-full transition-colors outline-none focus-visible:ring-1',
                 selectedAssignee === a.name
                   ? 'ring-primary z-20 ring-1'
                   : selectedAssignee && selectedAssignee !== a.name
