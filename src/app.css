@@ -113,11 +113,11 @@
   --ring: oklch(0.708 0 0);
   /* Hue order mirrors the Nuxt reference (blue / teal / amber / violet /
      rose) so a series keeps its identity across frameworks. */
-  --chart-1: oklch(0.55 0.22 262);
-  --chart-2: oklch(0.55 0.12 184);
-  --chart-3: oklch(0.64 0.17 52);
-  --chart-4: oklch(0.52 0.25 297);
-  --chart-5: oklch(0.55 0.22 22);
+  --chart-1: #2563eb;
+  --chart-2: #0d9488;
+  --chart-3: #d97706;
+  --chart-4: #7c3aed;
+  --chart-5: #e11d48;
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
   --sidebar-primary: oklch(0.205 0 0);
@@ -155,11 +155,11 @@
   --input: oklch(1 0 0 / 15%);
   --ring: oklch(0.556 0 0);
   /* Dark variants of the same blue / teal / amber / violet / rose order. */
-  --chart-1: oklch(0.71 0.16 256);
-  --chart-2: oklch(0.78 0.15 175);
-  --chart-3: oklch(0.83 0.17 75);
-  --chart-4: oklch(0.71 0.19 301);
-  --chart-5: oklch(0.71 0.19 15);
+  --chart-1: #60a5fa;
+  --chart-2: #2dd4bf;
+  --chart-3: #fbbf24;
+  --chart-4: #a78bfa;
+  --chart-5: #fb7185;
   --sidebar: oklch(0.205 0 0);
   --sidebar-foreground: oklch(0.985 0 0);
   --sidebar-primary: oklch(0.488 0.243 264.376);
