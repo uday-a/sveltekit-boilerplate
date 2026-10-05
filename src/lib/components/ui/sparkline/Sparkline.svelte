@@ -87,7 +87,6 @@
       showSymbol: variant === 'dots',
       endLabel: { show: false },
       lineStyle: { width: variant === 'area' ? 1.75 : 2, color },
-      itemStyle: { color, borderColor: color, borderWidth: 0 },
       data:
         variant === 'area'
           ? data.map((v, i) => ({
